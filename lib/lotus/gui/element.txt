@@ -67,17 +67,16 @@ end
 
 ]]
 function meta:SetSkin(skin)
-    if not skin then 
-        return 
+    if not skin then
+        return
     end
     for field, info in pairs(skin) do
-        if not self[field] then 
-            continue 
+        if not self[field] then
+            continue
         end
         for key, change in pairs(info) do
-            print(field, key)
-            if not self[field][key] then 
-                continue 
+            if not self[field][key] then
+                continue
             end
             self[field][key] = change
         end

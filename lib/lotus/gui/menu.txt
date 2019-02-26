@@ -1,0 +1,186 @@
+--@name lib/lotus/gui/menu
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("menu", nil)
+
+
+--[[
+
+]]
+function meta:Initialize()
+    self.contexts = {}
+    self.render_order = {}
+end
+
+
+--[[
+
+]]
+function meta:ClearContext(contextName, color)
+    if self.contexts[contextName] then
+        self.contexts[contextName].clear = color
+        self:InvalidateContext(contextName)
+    end
+end
+
+
+--[[
+
+]]
+function meta:AddContext(contextName, debug)
+    local context = {
+        x = 0,
+        y = 0,
+        w = 1024,
+        h = 1024,
+        elements = {},
+        debug = debug
+    }
+
+    context.clear = Color(0, 0, 0, 0)
+    context.color = Color(255, 255, 255, 255)
+    context.invalidate = true
+
+    context.rt = contextName .. math.floor(timer.curtime() + math.random(1, 9999))
+    render.createRenderTarget(context.rt)
+
+    table.insert(self.render_order, contextName)
+    self.contexts[contextName] = context
+end
+
+
+--[[
+
+]]
+function meta:AddElement(context, element)
+    if not self.contexts[context] then
+        return
+    end
+
+    element.id = table.insert(self.contexts[context].elements, element)
+    element.context = context
+    element.Invalidate = function(e)
+        self:InvalidateContext(e.context)
+    end
+
+    self:InvalidateContext(context)
+end
+
+
+--[[
+
+]]
+function meta:InvalidateContext(context)
+    if self.contexts[context] then self.contexts[context].invalidate = true end
+end
+
+function meta:Invalidate()
+    for _, context in pairs(self.contexts) do
+        context.invalidate = true
+    end
+end
+
+
+--[[
+
+]]
+function meta:DebugContext(context, bool)
+    if self.contexts[context] then self.contexts[context].debug = bool end
+end
+
+
+--[[
+
+]]
+function meta:DrawContextDebug(context)
+    local msg = string.format("\tContext: %s\n\tElements:", context.rt)
+
+    render.selectRenderTarget(context.rt)
+    render.clear(context.clear, true)
+    for i, element in ipairs(context.elements) do
+        if element.Draw then
+            msg = msg .. string.format("\n\t\t%d = %s", i, element._class)
+            element:Draw()
+        end
+    end
+    render.selectRenderTarget()
+
+    printMessage(2, string.format("\n\nLotus Debugger: \n%s\n\n", msg))
+end
+
+
+--[[
+
+]]
+function meta:DrawContext(name)
+    local context = self.contexts[name]
+    if not context then
+        return
+    end
+    if context.invalidate then
+        if context.debug then
+            self:DrawContextDebug(context)
+        else
+            render.selectRenderTarget(context.rt)
+            render.clear(context.clear, true)
+            for _, element in ipairs(context.elements) do
+                if element.Draw then
+                    element:Draw()
+                end
+            end
+            render.selectRenderTarget()
+        end
+        context.invalidate = false
+    end
+end
+
+
+--[[
+
+]]
+function meta:RenderContext(name)
+    local context = self.contexts[name]
+    if not context then
+        return
+    end
+    render.setColor(context.color)
+    render.setRenderTargetTexture(context.rt)
+    render.drawTexturedRect(context.x, context.y, context.w, context.h)
+    render.setRenderTargetTexture()
+end
+
+
+--[[
+
+]]
+function meta:Render()
+    for _, name in ipairs(self.render_order) do
+        self:DrawContext(name)
+    end
+    for _, name in ipairs(self.render_order) do
+        self:RenderContext(name)
+    end
+end
+
+
+--[[
+
+]]
+function meta:Think()
+
+
+end
+
+
+

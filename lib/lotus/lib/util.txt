@@ -1,0 +1,126 @@
+--@name lib/lotus/lib/util
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local util = { classes = {} }
+
+
+--[[
+
+]]
+function util.CreateClass(className, baseClass)
+    local class = {}
+    local class_mt = { __index = class }
+
+    class._class = className
+
+    function class:Create()
+        local instance = setmetatable({}, class_mt)
+        if instance.Initialize then
+            instance:Initialize()
+        end
+        return instance
+    end
+
+    if util.classes[baseClass] then
+        class._baseClass = baseClass
+        setmetatable(class, { __index = util.classes[baseClass] })
+    end
+
+    util.classes[className] = class
+
+    return util.classes[className]
+end
+
+
+--[[
+
+]]
+function util.PointInRectangle(pointx, pointy, rectx, recty, rectwidth, rectheight)
+    if not pointx or not pointy then return end
+    return pointx > rectx and pointy > recty and pointx < rectx + rectwidth and pointy < recty + rectheight
+end
+
+
+--[[
+
+]]
+function util.Map(x, in_min, in_max, out_min, out_max)
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+end
+
+
+--[[
+
+]]
+function util.Lerp(v0, v1, t)
+    return v0 + t * (v1 - v0)
+end
+
+
+--[[
+
+]]
+function util.GenerateCircle(originx, originy, offsetx, offsety, length, rotation, steps, color)
+    local circle = { color = color or Color(255, 255, 255) }
+
+    rotation = math.rad(rotation)
+
+    steps = steps or 3
+
+    for i = 0, steps - 1 do
+        local t = math.pi * 2 * i / steps + rotation
+        local x = math.cos(t) * length
+        local y = math.sin(t) * length
+
+        x = x + originx + offsetx
+        y = y + originy + offsety
+
+        table.insert(circle, { x = x, y = y })
+    end
+
+    return circle
+end
+
+
+--[[
+
+]]
+local function keyValuePairs(state)
+    state.Index = state.Index + 1
+
+    local keyValue = state.KeyValues[state.Index]
+    if not keyValue then return end
+
+    return keyValue.key, keyValue.val
+end
+
+local function toKeyValues(tbl)
+    local result = {}
+    for k, v in pairs(tbl) do
+        table.insert(result, { key = k, val = v } )
+    end
+    return result
+end
+
+function util.SortedPairs(pTable, Desc)
+    local sortedTbl = toKeyValues(pTable)
+
+    if Desc then
+        table.sort(sortedTbl, function(a, b) return a.key > b.key end)
+    else
+        table.sort(sortedTbl, function(a, b) return a.key < b.key end)
+    end
+
+    return keyValuePairs, { Index = 0, KeyValues = sortedTbl }
+end
+
+
+--[[
+
+]]
+return util

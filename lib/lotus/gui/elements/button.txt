@@ -1,0 +1,138 @@
+--@name lib/lotus/gui/elements/button
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("button", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    self.border = {
+        draw = true,
+        color = Color(0, 0, 0),
+    }
+    self.button = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = self.w or 0,
+        h = self.h or 0,
+        color1 = Color(68, 108, 179),
+        color2 = Color(88, 118, 189),
+        color3 = Color(131, 148, 175),
+        color4 = Color(148, 161, 193),
+        draw = true,
+    }
+    self.text = {
+        x = self.x or 0,
+        y = self.y or 0,
+        text = "button",
+        font = lotus.fonts.default_small,
+        color = Color(228, 241, 254),
+        draw = true,
+    }
+
+    self:SetPos(256, 256)
+    self:SetSize(48, 24)
+end
+
+
+--[[
+
+]]
+function meta:DefaultCallbacks()
+    lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.context then
+            return
+        end
+        if lotus.util.PointInRectangle(cursorx, cursory, self.button.x, self.button.y, self.button.w, self.button.h) then
+            self:OnPress(timer.curtime())
+            self:Invalidate()
+        end
+    end)
+    lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        if not self.context then
+            return
+        end
+        self:OnRelease(timer.curtime())
+        self:Invalidate()
+    end)
+end
+
+
+--[[
+
+]]
+function meta:OnPress(timePressed)
+    self.active = timePressed
+end
+
+function meta:OnRelease(timeReleased)
+    self.active = false
+end
+
+
+--[[
+
+]]
+function meta:Format()
+    self.button.x = self.x
+    self.button.y = self.y
+    self.button.w = self.w
+    self.button.h = self.h
+
+    render.setFont(self.text.font)
+    local w, h = render.getTextSize(self.text.text)
+    self.text.x = self.button.x + self.button.w / 2
+    self.text.y = self.button.y + self.button.h / 2 - h / 2
+
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetText(text, font)
+    self.text.font = font or self.text.font
+    self.text.text = text
+    self:Format()
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+    if self.button.draw then
+        render.setColor(self.active and self.button.color3 or self.button.color1)
+        render.drawRectFast(self.button.x, self.button.y, self.button.w, self.button.h)
+
+        render.setColor(self.active and self.button.color4 or self.button.color2)
+        render.drawRectFast(self.button.x + 1, self.button.y, self.button.w - 2, self.button.h / 2)
+
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.button.x, self.button.y, self.button.w, self.button.h)
+        end
+    end
+    if self.text.draw then
+        render.setFont(self.text.font)
+        render.setColor(self.text.color)
+        render.drawText(self.text.x, self.text.y, self.text.text, 1)
+    end
+end
+

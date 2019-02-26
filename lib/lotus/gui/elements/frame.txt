@@ -1,0 +1,125 @@
+--@name lib/lotus/gui/elements/frame
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("frame", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    self.border = {
+        draw = true,
+        color = Color(0, 0, 0),
+    }
+    self.header = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = self.w or 0,
+        h = self.h or 0,
+        color1 = Color(68, 108, 179),
+        color2 = Color(88, 118, 189),
+        draw = true,
+    }
+    self.title = {
+        x = self.x or 0,
+        y = self.y or 0,
+        text = "frame",
+        font = lotus.fonts.default,
+        color = Color(228, 241, 254),
+        draw = true,
+    }
+    self.frame = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = self.w or 0,
+        h = self.h or 0,
+        color = Color(228, 241, 254),
+        draw = true,
+    }
+
+    self:SetPos(128, 128)
+    self:SetSize(256, 256)
+end
+
+
+--[[
+
+]]
+function meta:Format()
+    self.header.x = self.x
+    self.header.y = self.y
+    self.header.w = self.w
+    self.header.h = 18
+
+    render.setFont(self.title.font)
+    local w, h = render.getTextSize(self.title.text)
+    self.title.x = self.header.x + self.header.w / 2
+    self.title.y = self.header.y - h / 10
+
+    self.frame.x = self.x
+    self.frame.y = self.y + self.header.h
+    self.frame.w = self.w
+    self.frame.h = self.h - self.header.h
+
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetTitle(title, font, nodraw)
+    if nodraw then 
+        self.title.draw = false
+    else
+        self.title.font = font or self.title.font
+        self.title.text = title
+    end
+    self:Format()
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+    if self.header.draw then
+        render.setColor(self.header.color1)
+        render.drawRectFast(self.header.x, self.header.y, self.header.w, self.header.h)
+
+        render.setColor(self.header.color2)
+        render.drawRectFast(self.header.x + 1, self.header.y, self.header.w - 2, self.header.h / 2)
+
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.header.x, self.header.y, self.header.w, self.header.h)
+        end
+        if self.title.draw then
+            render.setFont(self.title.font)
+            render.setColor(self.title.color)
+            render.drawText(self.title.x, self.title.y, self.title.text, 1)
+        end
+    end
+    if self.frame.draw then
+        render.setColor(self.frame.color)
+        render.drawRectFast(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+        end
+    end
+end

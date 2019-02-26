@@ -1,0 +1,117 @@
+--@name lib/lotus/gui/element
+--@author shadowscion
+--@client
+
+--@include lib/lotus/gui/elements/button.txt
+--@include lib/lotus/gui/elements/frame.txt
+--@include lib/lotus/gui/elements/scrollframe.txt
+
+
+--[[
+
+]]
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("element", nil)
+
+require("lib/lotus/gui/elements/button.txt")
+require("lib/lotus/gui/elements/frame.txt")
+require("lib/lotus/gui/elements/scrollframe.txt")
+
+
+--[[
+
+]]
+function meta:Initialize()
+    self.x = 0
+    self.y = 0
+    self.w = 0
+    self.h = 0
+    if self.OnInitialize then
+        self:OnInitialize()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetPos(x, y)
+    self.x = x or self.x
+    self.y = y or self.y
+    self:Format()
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetSize(w, h)
+    self.w = w or self.w
+    self.h = h or self.h
+    self:Format()
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetSkin(skin)
+    if not skin then 
+        return 
+    end
+    for field, info in pairs(skin) do
+        if not self[field] then 
+            continue 
+        end
+        for key, change in pairs(info) do
+            print(field, key)
+            if not self[field][key] then 
+                continue 
+            end
+            self[field][key] = change
+        end
+    end
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:Format()
+
+
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+
+
+end
+
+
+--[[
+    DRAW HOOK -> DO NOT MODIFY, USE OnDraw INSTEAD.
+]]
+function meta:Draw()
+    if self.nodraw then
+        return
+    end
+    self:OnDraw()
+end

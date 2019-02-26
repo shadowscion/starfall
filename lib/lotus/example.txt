@@ -1,0 +1,42 @@
+--@name lib/lotus/example
+--@author
+--@shared
+--@include lib/lotus/init.txt
+
+
+--[[
+
+]]
+if SERVER then
+    local pos, ang = localToWorld(Vector(-54, 0, 0), Angle(0, 0, 0), chip():getPos(), chip():getAngles())
+    prop.createComponent(pos, ang, "starfall_screen", "models/hunter/plates/plate2x2.mdl", true):linkComponent(chip())
+
+    return
+end
+
+setName("SMB Level Editor")
+
+
+
+--[[
+    EXAMPLE USAGE
+]]
+require("lib/lotus/init.txt")
+
+local menu = lotus.CreateMenu()
+
+menu:AddContext("test", true)
+menu:ClearContext("test", Color(255, 255, 255))
+
+local frame = lotus.CreateElement("scrollframe")
+menu:AddElement("test", frame)
+frame:SetContentsLength(300)
+frame:SetPos(0, 0)
+frame:SetSkin(lotus.skins["orange"])
+
+local btn = lotus.CreateElement("button")
+menu:AddElement("test", btn)
+btn:DefaultCallbacks()
+btn:SetPos(400, 0)
+btn:SetSkin(lotus.skins["orange"])
+

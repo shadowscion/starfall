@@ -1,0 +1,252 @@
+--@name lib/lotus/gui/elements/scrollframe
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("scrollframe", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    self.border = {
+        draw = true,
+        color = Color(0, 0, 0),
+    }
+    self.header = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = self.w or 0,
+        h = self.h or 0,
+        color1 = Color(68, 108, 179),
+        color2 = Color(88, 118, 189),
+        draw = true,
+    }
+    self.title = {
+        x = self.x or 0,
+        y = self.y or 0,
+        text = "scrollframe",
+        font = lotus.fonts.default,
+        color = Color(228, 241, 254),
+        draw = true,
+    }
+    self.frame = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = self.w or 0,
+        h = self.h or 0,
+        color = Color(228, 241, 254),
+        draw = true,
+    }
+    self.scrollbar = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = 16,
+        h = self.h or 0,
+        color = Color(218, 231, 244),
+        draw = true,
+    }
+    self.handle = {
+        x = self.x or 0,
+        y = self.y or 0,
+        w = 15,
+        h = self.h or 0,
+        color1 = Color(188, 218, 249),
+        color2 = Color(88, 118, 189),
+        draw = true,
+    }
+    self.contents = {
+        Draw = function(self, minx, miny, w, h, scroll)
+            render.setColor(Color(255, 0, 0))
+            render.setFont(lotus.fonts.default_small)
+
+            local size = w / 11
+
+            for y = 0, math.floor(self.length / size) do
+                for x = 0, 10 do
+                    render.drawText(minx + x * size, scroll + y * size, (y * 10 + x) .. "", 3)
+                end
+            end
+        end,
+        length = 0,
+        scroll = 0,
+        draw = true,
+    }
+
+    lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.context then
+            return
+        end
+        if lotus.util.PointInRectangle(cursorx, cursory, self.handle.x, self.handle.y, self.handle.w, self.handle.h) then
+            self.handle.active = cursory - self.handle.y
+            self:Invalidate()
+        end
+    end)
+    lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        if not self.context then
+            return
+        end
+        self.handle.active = false
+        self:Invalidate()
+    end)
+    lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
+        if not self.handle.active or not self.context then
+            return
+        end
+
+        local ymin = self.scrollbar.y
+        local ymax = self.scrollbar.y + self.scrollbar.h - self.handle.h
+        local yval = math.clamp(cursory - self.handle.active, ymin, ymax)
+
+        if self.handle.y ~= yval then
+            self.handle.y = yval
+            self:Scroll(ymin, ymax, yval, yval - self.handle.y)
+            self:Invalidate()
+        end
+    end)
+
+    self:SetPos(128, 128)
+    self:SetSize(256, 256)
+end
+
+
+--[[
+
+]]
+function meta:Scroll(ymin, ymax, yval, ydelta)
+    self.contents.scroll = self.frame.y + ((yval - ymin) * (self.frame.h - self.contents.length)) / (ymax - ymin)
+    self:OnScroll(ymin, ymax, yval, ydelta)
+end
+
+
+--[[
+
+]]
+function meta:OnScroll(ymin, ymax, yval, ydelta)
+
+end
+
+
+--[[
+
+]]
+function meta:Format()
+    self.header.x = self.x
+    self.header.y = self.y
+    self.header.w = self.w
+    self.header.h = 18
+
+    render.setFont(self.title.font)
+    local w, h = render.getTextSize(self.title.text)
+    self.title.x = self.header.x + self.header.w / 2 - self.scrollbar.w / 2
+    self.title.y = self.header.y - h / 10
+
+    self.frame.x = self.x
+    self.frame.y = self.y + self.header.h
+    self.frame.w = self.w - self.scrollbar.w
+    self.frame.h = self.h - self.header.h
+
+    self.scrollbar.x = self.frame.x + self.frame.w
+    self.scrollbar.y = self.frame.y
+    self.scrollbar.h = self.frame.h
+
+    self.handle.x = self.scrollbar.x
+    self.handle.y = self.scrollbar.y
+    self.handle.h = self.frame.h^2 / self.contents.length
+    self.contents.scroll = self.frame.y
+
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetTitle(title, font, nodraw)
+    if nodraw then 
+        self.title.draw = false
+    else
+        self.title.font = font or self.title.font
+        self.title.text = title
+    end
+    self:Format()
+end
+
+
+--[[
+
+]]
+function meta:SetContentsLength(len)
+    self.contents.length = len
+    self:Format()
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+    if self.header.draw then
+        render.setColor(self.header.color1)
+        render.drawRectFast(self.header.x, self.header.y, self.header.w, self.header.h)
+
+        render.setColor(self.header.color2)
+        render.drawRectFast(self.header.x + 1, self.header.y, self.header.w - 2, self.header.h / 2)
+
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.header.x, self.header.y, self.header.w, self.header.h)
+        end
+        if self.title.draw then
+            render.setFont(self.title.font)
+            render.setColor(self.title.color)
+            render.drawText(self.title.x, self.title.y, self.title.text, 1)
+        end
+    end
+    if self.frame.draw then
+        render.setColor(self.frame.color)
+        render.drawRectFast(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+        end
+    end
+    if self.scrollbar.draw then
+        render.setColor(self.scrollbar.color)
+        render.drawRectFast(self.scrollbar.x, self.scrollbar.y, self.scrollbar.w, self.scrollbar.h)
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.scrollbar.x, self.scrollbar.y, self.scrollbar.w, self.scrollbar.h)
+        end
+    end
+    if self.handle.draw then
+        render.setColor(self.handle.active and self.handle.color2 or self.handle.color1)
+        render.drawRectFast(self.handle.x, self.handle.y, self.handle.w, self.handle.h)
+
+        render.setColor(self.handle.color2)
+        render.drawRectFast(self.handle.x, self.handle.y + 1, self.handle.w, 2)
+        render.drawRectFast(self.handle.x, self.handle.y + self.handle.h - 3, self.handle.w, 2)
+
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.handle.x, self.handle.y, self.handle.w, self.handle.h)
+        end
+    end
+    if self.contents.draw then
+        render.enableScissorRect(self.frame.x, self.frame.y, self.frame.x + self.frame.w, self.frame.y + self.frame.h)
+        self.contents:Draw(self.frame.x, self.frame.y, self.frame.w, self.frame.h, self.contents.scroll)
+        render.disableScissorRect()
+    end
+end

@@ -1,0 +1,105 @@
+--@name lib/lotus/gui/skin
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local lotus = lotus
+
+
+--[[
+
+]]
+lotus.fonts = {}
+
+lotus.fonts.default = render.createFont("Courier New", 18, 100, false, false, true, false, false, true)
+lotus.fonts.default_small = render.createFont("Courier New", 13, 50, false, false, true, false, false, true)
+
+
+--[[
+
+]]
+lotus.skins = {}
+
+lotus.skins["orange"] = {
+    header = {
+        color1 = Color(255, 207, 75),
+        color2 = Color(245, 171, 53),
+    },
+    title = {
+        font = lotus.fonts.default,
+        color = Color(228, 241, 254),
+    },
+    frame = {
+        color = Color(197, 211, 226),
+    },
+    scrollbar = {
+        color = Color(152, 166, 181),
+    },
+    handle = {
+        color1 = Color(207, 192, 178),
+        color2 = Color(255, 207, 75),
+    },
+    button = {
+        color1 = Color(245, 171, 53),
+        color2 = Color(255, 207, 75),
+        color3 = Color(152, 166, 181),
+        color4 = Color(197, 211, 226),
+    },
+}
+
+lotus.skins["purple"] = {
+    header = {
+        color1 = Color(68, 90, 179),
+        color2 = Color(88, 94, 189),
+    },
+    title = {
+        font = lotus.fonts.default,
+        color = Color(228, 241, 254),
+    },
+    frame = {
+        color = Color(213, 226, 252),
+    },
+    scrollbar = {
+        color = Color(218, 231, 244),
+    },
+    handle = {
+        color1 = Color(176, 190, 246),
+        color2 = Color(68, 90, 179),
+    },
+    button = {
+        color1 = Color(68, 90, 179),
+        color2 = Color(88, 94, 189),
+        color3 = Color(213, 226, 252),
+        color4 = Color(176, 190, 246),
+    },
+}
+
+lotus.skins["default"] = {
+    header = {
+        color1 = Color(68, 108, 179),
+        color2 = Color(88, 118, 189),
+    },
+    title = {
+        font = lotus.fonts.default,
+        color = Color(228, 241, 254),
+    },
+    frame = {
+        color = Color(228, 241, 254),
+    },
+    scrollbar = {
+        color = Color(218, 231, 244),
+    },
+    handle = {
+        color1 = Color(188, 218, 249),
+        color2 = Color(88, 118, 189),
+    },
+    button = {
+        color1 = Color(68, 108, 179),
+        color2 = Color(88, 118, 189),
+        color3 = Color(131, 148, 175),
+        color4 = Color(148, 161, 193),
+    },
+}

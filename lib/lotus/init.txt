@@ -1,0 +1,171 @@
+--@name lib/lotus/init
+--@author shadowscion
+--@client
+
+--@include lib/lotus/lib/util.txt
+--@include lib/lotus/gui/skin.txt
+--@include lib/lotus/gui/menu.txt
+--@include lib/lotus/gui/element.txt
+
+
+--[[
+    EXPANDABLE GUI/MENU LIBRARY
+]]
+lotus = {
+    menus = {},
+    callbacks = {
+        ["inputPressed"] = {},
+        ["inputReleased"] = {},
+        ["cursorChanged"] = {},
+    },
+    cursor = {
+        x = -1,
+        y = -1,
+        changed = false,
+        onscreen = false,
+        shapes = {
+            {
+                { x = 2, y = 19 },
+                { x = 2, y = 26 },
+                { x = -2, y = 26 },
+                { x = -2, y = 19 },
+                color = Color(0, 0, 0),
+            },
+            {
+                { x = 0, y = -2 },
+                { x = 8, y = 19 },
+                { x = -8, y = 19 },
+                color = Color(0, 0, 0),
+            },
+            {
+                { x = 1, y = 18 },
+                { x = 1, y = 25 },
+                { x = -1, y = 25 },
+                { x = -1, y = 18 },
+                color = Color(255, 255, 255),
+            },
+            {
+                { x = 0, y = 0 },
+                { x = 6, y = 18 },
+                { x = -6, y = 18 },
+                color = Color(255, 255, 255),
+            }
+        },
+        matrix = Matrix(),
+        vector = Vector(),
+        angle = Angle(0, -22.5, 0),
+        scale = Vector(0.5, 0.5, 0),
+        draw = true,
+    },
+}
+
+
+--[[
+
+]]
+local lotus = lotus
+
+lotus.cursor.matrix:setScale(lotus.cursor.scale)
+lotus.cursor.matrix:setAngles(lotus.cursor.angle)
+
+lotus.util = require("lib/lotus/lib/util.txt")
+
+require("lib/lotus/gui/skin.txt")
+require("lib/lotus/gui/menu.txt")
+require("lib/lotus/gui/element.txt")
+
+
+--[[
+
+]]
+function lotus.CreateMenu(className)
+    if not lotus.util.classes[className] then
+        className = "menu"
+    end
+    local menu = lotus.util.classes[className]:Create()
+    if menu then
+        table.insert(lotus.menus, menu)
+        return menu
+    end
+end
+
+function lotus.CreateElement(className)
+    if not lotus.util.classes[className] then
+        className = "element"
+    end
+    return lotus.util.classes[className]:Create()
+end
+
+
+--[[
+
+]]
+function lotus.RegisterCallback(event, key, callback)
+    if not lotus.callbacks[event] then return end
+    if key then
+        lotus.callbacks[event][key] = lotus.callbacks[event][key] or {}
+        table.insert(lotus.callbacks[event][key], callback)
+    else
+        table.insert(lotus.callbacks[event], callback)
+    end
+end
+
+
+--[[
+
+]]
+hook.add("inputPressed", "lotus.keyDown", function(key)
+    if not lotus.callbacks["inputPressed"][key] then return end
+    for _, callback in ipairs(lotus.callbacks["inputPressed"][key]) do
+        callback(lotus.cursor.x, lotus.cursor.y, lotus.cursor.onscreen)
+    end
+end)
+
+hook.add("inputReleased", "lotus.keyUp", function(key)
+    if not lotus.callbacks["inputReleased"][key] then return end
+    for _, callback in ipairs(lotus.callbacks["inputReleased"][key]) do
+        callback(lotus.cursor.x, lotus.cursor.y, lotus.cursor.onscreen)
+    end
+end)
+
+hook.add("think", "think", function()
+    for _, menu in ipairs(lotus.menus) do
+        menu:Think()
+    end
+end)
+
+hook.add("render", "render", function()
+    local x, y = render.cursorPos()
+
+    x = x or -1
+    y = y or -1
+
+    if x ~= lotus.cursor.x or y ~= lotus.cursor.y then
+        lotus.cursor.x = x
+        lotus.cursor.y = y
+        lotus.cursor.onscreen = x ~= -1 and y ~= -1
+        lotus.cursor.changed = true
+        if lotus.cursor.draw and lotus.cursor.onscreen then
+            lotus.cursor.vector.x = x
+            lotus.cursor.vector.y = y
+            lotus.cursor.matrix:setTranslation(lotus.cursor.vector)
+        end
+    end
+    if lotus.cursor.changed then
+        for _, callback in ipairs(lotus.callbacks["cursorChanged"]) do
+            callback(lotus.cursor.x, lotus.cursor.y, lotus.cursor.onscreen)
+        end
+        lotus.cursor.changed = false
+    end
+    for _, menu in ipairs(lotus.menus) do
+        menu:Render()
+    end
+    if lotus.cursor.draw and lotus.cursor.onscreen then
+        render.pushMatrix(lotus.cursor.matrix)
+        for i, shape in ipairs(lotus.cursor.shapes) do
+            render.setColor(shape.color)
+            render.drawPoly(shape)
+        end
+        render.popMatrix()
+    end
+end)

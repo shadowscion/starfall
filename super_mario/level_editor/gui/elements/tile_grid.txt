@@ -27,9 +27,9 @@ function meta:OnInitialize()
     self.contents = {}
 
     self.color1 = Color(228, 241, 254, 255)
-    self.color2 = Color(137, 196, 244, 255)
+    self.color2 = Color(179, 215, 242, 255)
     self.color3 = Color(228, 241, 254, 55)
-    self.color4 = Color(137, 196, 244, 55)
+    self.color4 = Color(179, 215, 242, 55)
 
     self:SetGrid()
 end
@@ -49,15 +49,34 @@ end
 --[[
 
 ]]
+function meta:ClearGridContents()
+    self.contents = {}
+
+    if self.InvalidateContext then
+        self:InvalidateContext()
+    end
+end
+
+
+--[[
+
+]]
 function meta:SetGridContents(row, col, contents)
     row = math.clamp(row or 0, 0, 15)
     col = math.clamp(col or 0, 0, 15)
 
-    self.contents[row] = self.contents[row] or {}
-    self.contents[row][col] = contents
+    if contents then
+        self.contents[row] = self.contents[row] or {}
+        self.contents[row][col] = contents
 
-    if self.Invalidate then
-        self:Invalidate()
+        if self.InvalidateContext then
+            self:InvalidateContext()
+        end
+    elseif self.contents[row] and self.contents[row][col] then
+        self.contents[row][col] = nil
+        if self.InvalidateContext then
+            self:InvalidateContext()
+        end
     end
 end
 
@@ -70,8 +89,8 @@ function meta:SetGrid(xmin, xmax, ymin, ymax)
     self.ymax = math.clamp(ymax or 15, 0, 15)
     self.xmin = math.clamp(xmin or 0, 0, 15)
     self.xmax = math.clamp(xmax or 15, 0, 15)
-    if self.Invalidate then
-        self:Invalidate()
+    if self.InvalidateContext then
+        self:InvalidateContext()
     end
 end
 
@@ -85,8 +104,8 @@ function meta:SetBlur(blurx, blury, passes)
         blury = blury or 5,
         passes = passes or 5,
     }
-    if self.Invalidate then
-        self:Invalidate()
+    if self.InvalidateContext then
+        self:InvalidateContext()
     end
 end
 

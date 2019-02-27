@@ -1,19 +1,33 @@
 --@name super_mario/level_editor/gui/editor
 --@author shadowscion
 --@client
+
+--[[
+    sprite dictionary
+]]
+--@include super_mario/res/tiles.txt
+
+
+--[[
+    gui library
+]]
 --@include lib/lotus/init.txt
---@includedir super_mario/level_editor/gui/elements
+
+
+--[[
+    editor elements
+]]
 --@include super_mario/level_editor/gui/elements/placement.txt
 --@include super_mario/level_editor/gui/elements/selection.txt
---@include super_mario/level_editor/gui/elements/tools.txt
+--@include super_mario/level_editor/gui/elements/controlpanel.txt
 --@include super_mario/level_editor/gui/elements/tile_grid.txt
---@include super_mario/res/tiles.txt
 
 
 --[[
 
 ]]
 editor = {}
+editor.tilesheet = require("super_mario/res/tiles.txt")
 
 
 --[[
@@ -21,11 +35,9 @@ editor = {}
 ]]
 require("lib/lotus/init.txt")
 
-editor.tilesheet = require("super_mario/res/tiles.txt")
-
 require("super_mario/level_editor/gui/elements/placement.txt")
 require("super_mario/level_editor/gui/elements/selection.txt")
-require("super_mario/level_editor/gui/elements/tools.txt")
+require("super_mario/level_editor/gui/elements/controlpanel.txt")
 require("super_mario/level_editor/gui/elements/tile_grid.txt")
 
 
@@ -33,11 +45,25 @@ require("super_mario/level_editor/gui/elements/tile_grid.txt")
 
 ]]
 editor.menu = lotus.CreateMenu()
-editor.debug = true
+editor.debug = false
 
 editor.menu:AddContext("grid_inactive", editor.debug)
 editor.menu:AddContext("grid_active", editor.debug)
+editor.menu:AddContext("controlpanel", editor.debug)
 editor.menu:AddContext("menu", editor.debug)
+editor.menu:AddContext("overlay", true)
+
+
+
+--[[
+
+]]
+timer.create("invalidate", 0.05, 0, function()
+    if editor.tilesheet.texture.isLoaded then
+        editor.menu:InvalidateContext()
+        timer.remove("invalidate")
+    end
+end)
 
 
 --[[
@@ -45,10 +71,10 @@ editor.menu:AddContext("menu", editor.debug)
 ]]
 editor.placement = lotus.CreateElement("placement", editor.menu, "menu")
 editor.selection = lotus.CreateElement("selection", editor.menu, "menu")
-editor.tools = lotus.CreateElement("tools", editor.menu, "menu")
+editor.controlpanel = lotus.CreateElement("controlpanel", editor.menu, "controlpanel")
 
 for _, context in pairs(editor.menu.contexts) do
     for _, element in pairs(context.elements) do
-        element:SetSkin(lotus.skins["purple"])
+        element:SetSkin(lotus.skins["green"])
     end
 end

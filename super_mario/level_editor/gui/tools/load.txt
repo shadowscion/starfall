@@ -1,0 +1,10 @@
+--@name super_mario/level_editor/gui/tools/load
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+

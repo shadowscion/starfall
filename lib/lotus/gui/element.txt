@@ -44,8 +44,8 @@ function meta:SetPos(x, y)
     self.x = x or self.x
     self.y = y or self.y
     self:Format()
-    if self.Invalidate then
-        self:Invalidate()
+    if self.InvalidateContext then
+        self:InvalidateContext()
     end
 end
 
@@ -57,8 +57,8 @@ function meta:SetSize(w, h)
     self.w = w or self.w
     self.h = h or self.h
     self:Format()
-    if self.Invalidate then
-        self:Invalidate()
+    if self.InvalidateContext then
+        self:InvalidateContext()
     end
 end
 
@@ -81,8 +81,8 @@ function meta:SetSkin(skin)
             self[field][key] = change
         end
     end
-    if self.Invalidate then
-        self:Invalidate()
+    if self.InvalidateContext then
+        self:InvalidateContext()
     end
 end
 

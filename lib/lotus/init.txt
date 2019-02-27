@@ -137,8 +137,8 @@ end)
 hook.add("render", "render", function()
     local x, y = render.cursorPos()
 
-    x = x or -1
-    y = y or -1
+    x = math.floor(x or -1)
+    y = math.floor(y or -1)
 
     if x ~= lotus.cursor.x or y ~= lotus.cursor.y then
         lotus.cursor.x = x

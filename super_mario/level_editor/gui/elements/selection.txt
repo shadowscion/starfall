@@ -27,24 +27,24 @@ local meta = lotus.util.CreateClass("selection", "element")
 ]]
 function meta:OnInitialize()
     --
-    self.panel = lotus.CreateElement("scrollframe")
+    self.panel = lotus.CreateElement("scrollframe", editor.menu, self.context)
 
     self.panel:SetTitle("TILE SELECTION")
     self.panel:SetPos(0, editor.placement.panel.h)
     self.panel:SetSize(256, 512 - editor.placement.panel.h)
     self.panel:SetContentsLength(512)
 
-    self.menu:AddElement(self.context, self.panel)
-
     --
     self.iconlist = {}
     self.iconlist.color_background = Color(114, 180, 255)
+    self.iconlist.color_selected = Color(255, 0, 0)
 
     self:BuildIconList()
 
     self.panel.contents.Draw = function(contents, scroll)
         self:DrawIconlistHeaders(scroll)
         self:DrawIconList(scroll)
+        self:DrawIconSelected(scroll)
     end
     self.panel.OnScroll = function(panel, ymin, ymax, yval, ydelta)
         self.iconlist.ymin = math.clamp(math.floor(((panel.frame.y - panel.contents.scroll) * self.iconlist.rows) / panel.contents.length) + 1, 1, self.iconlist.rows)
@@ -52,13 +52,24 @@ function meta:OnInitialize()
     end
 
     --
+    lotus.RegisterCallback("inputPressed", 108, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.context or not self.current_selection or cursory < 256 or cursorx > 256 then
+            return
+        end
+        if lotus.util.PointInRectangle(cursorx, cursory, self.panel.handle.x, self.panel.handle.y, self.panel.handle.w, self.panel.handle.h) then
+            self.panel.handle.y = self.current_selection.scrollbary
+            self.panel.contents.scroll = self.current_selection.scroll
+            self.panel:OnScroll()
+            self.panel:InvalidateContext()
+        end
+    end)
     lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
         if not onscreen or not self.context or cursory < 256 or cursorx > 256 then
             return
         end
         local row, col, num, onGrid = self:GetCursorCell(cursorx, cursory)
         if onGrid and self.iconlist.icons[row][col] then
-            self.current_selection = self.iconlist.icons[row][col]
+            self:SetSelection(row, col)
         end
     end)
     lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
@@ -66,6 +77,33 @@ function meta:OnInitialize()
             return
         end
     end)
+end
+
+
+--[[
+
+]]
+function meta:SetSelection(row, col, num)
+    if self.current_selection then
+        self.current_selection.py = nil
+        self.current_selection.px = nil
+        self.current_selection.row = nil
+        self.current_selection.scroll = nil
+        self.current_selection.scrollbary = nil
+    end
+    self.current_selection = self.iconlist.icons[row][col]
+    if self.current_selection then
+        editor.placement.grid_center_ghost:SetIcon(self.current_selection)
+
+        self.current_selection.py = (row - 1) * self.iconlist.size_large
+        self.current_selection.px = (col - 1) * self.iconlist.size_large + self.iconlist.xoff
+        self.current_selection.row = row
+        self.current_selection.scroll = self.panel.contents.scroll
+        self.current_selection.scrollbary = self.panel.handle.y
+    end
+    if self.InvalidateContext then
+        self:InvalidateContext()
+    end
 end
 
 
@@ -121,6 +159,7 @@ function meta:DrawIconList(scroll)
     for y = self.iconlist.ymin, self.iconlist.ymax do
         if not self.iconlist.icons[y] or self.iconlist.icons[y].text then continue end
         for x, icon in pairs(self.iconlist.icons[y]) do
+            if icon == self.current_selection then continue end
             render.drawRectFast(self.iconlist.xoff + (x - 1) * self.iconlist.size_large, scroll + (y - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small)
         end
     end
@@ -129,6 +168,7 @@ function meta:DrawIconList(scroll)
     for y = self.iconlist.ymin, self.iconlist.ymax do
         if not self.iconlist.icons[y] or self.iconlist.icons[y].text then continue end
         for x, icon in pairs(self.iconlist.icons[y]) do
+            if icon == self.current_selection then continue end
             render.drawTexturedRectUVFast(self.iconlist.xoff + (x - 1) * self.iconlist.size_large, scroll + (y - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small,
                 icon.u0, icon.v0, icon.u1, icon.v1, true)
         end
@@ -138,6 +178,7 @@ function meta:DrawIconList(scroll)
     for y = self.iconlist.ymin, self.iconlist.ymax do
         if not self.iconlist.icons[y] or self.iconlist.icons[y].text then continue end
         for x, icon in pairs(self.iconlist.icons[y]) do
+            if icon == self.current_selection then continue end
             render.drawRectOutline(self.iconlist.xoff + (x - 1) * self.iconlist.size_large, scroll + (y - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small)
         end
     end
@@ -147,10 +188,38 @@ end
 --[[
 
 ]]
+function meta:DrawIconSelected(scroll)
+    if not self.current_selection then
+        return
+    end
+
+    local icon = self.current_selection
+    if icon.row < self.iconlist.ymin or icon.row > self.iconlist.ymax then
+        return
+    end
+
+    render.setColor(self.iconlist.color_selected)
+    render.drawRect(icon.px - 2, scroll + icon.py - 2, self.iconlist.size_large + 2, self.iconlist.size_large + 2)
+    render.setColor(self.iconlist.color_background)
+    render.drawRect(icon.px, scroll + icon.py, self.iconlist.size_small, self.iconlist.size_small)
+
+    render.setColor(color_white)
+    render.setMaterial(editor.tilesheet.texture)
+    render.drawTexturedRectUVFast(icon.px, scroll + icon.py, self.iconlist.size_small, self.iconlist.size_small, icon.u0, icon.v0, icon.u1, icon.v1, true)
+    render.setMaterial()
+
+    render.setColor(color_black)
+    render.drawRectOutline(icon.px, scroll + icon.py, self.iconlist.size_small, self.iconlist.size_small)
+end
+
+
+--[[
+
+]]
 function meta:BuildIconList(size)
     self.iconlist.icons = {}
     self.iconlist.size_large = size or 24
-    self.iconlist.size_small = self.iconlist.size_large - 1.6667
+    self.iconlist.size_small = self.iconlist.size_large - 2
 
     self.iconlist.rows = 0
     self.iconlist.cols = math.floor((self.panel.frame.w - 1) / self.iconlist.size_large)

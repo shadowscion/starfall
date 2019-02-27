@@ -14,14 +14,42 @@ local lotus = lotus
 ]]
 lotus.fonts = {}
 
-lotus.fonts.default = render.createFont("Courier New", 18, 100, false, false, true, false, false, true)
-lotus.fonts.default_small = render.createFont("Courier New", 14, 50, false, false, true, false, false, true)
+lotus.fonts.default = render.createFont("Courier New", 18, 100, false, false, true, false, false)
+lotus.fonts.default_small = render.createFont("Courier New", 14, 10, false, false, true, false, false)
+lotus.fonts.label = render.createFont("Arial", 12, 10)
 
 
 --[[
 
 ]]
 lotus.skins = {}
+
+lotus.skins["metal"] = {
+    header = {
+        color1 = Color(45, 52, 54),
+        color2 = Color(99, 110, 114),
+    },
+    title = {
+        font = lotus.fonts.default,
+        color = Color(223, 230, 233),
+    },
+    frame = {
+        color = Color(223, 230, 233),
+    },
+    scrollbar = {
+        color = Color(178, 190, 195),
+    },
+    handle = {
+        color1 = Color(99, 110, 114),
+        color2 = Color(45, 52, 54),
+    },
+    button = {
+        color3 = Color(45, 52, 54),
+        color4 = Color(99, 110, 114),
+        color1 = Color(223, 230, 233),
+        color2 = Color(178, 190, 195),
+    },
+}
 
 lotus.skins["orange"] = {
     header = {
@@ -52,28 +80,55 @@ lotus.skins["orange"] = {
 
 lotus.skins["purple"] = {
     header = {
-        color1 = Color(68, 90, 179),
-        color2 = Color(88, 94, 189),
+        color1 = Color(104, 109, 224),
+        color2 = Color(72, 52, 212),
     },
     title = {
         font = lotus.fonts.default,
         color = Color(228, 241, 254),
     },
     frame = {
-        color = Color(213, 226, 252),
+        color = Color(171, 174, 234),
     },
     scrollbar = {
-        color = Color(218, 231, 244),
+        color = Color(142, 147, 241),
     },
     handle = {
-        color1 = Color(176, 190, 246),
-        color2 = Color(68, 90, 179),
+        color1 = Color(104, 109, 224),
+        color2 = Color(72, 52, 212),
     },
     button = {
-        color3 = Color(68, 90, 179),
-        color4 = Color(88, 94, 189),
+        color3 = Color(104, 109, 224),
+        color4 = Color(72, 52, 212),
         color1 = Color(111, 128, 155),
         color2 = Color(128, 131, 193),
+    },
+}
+
+lotus.skins["green"] = {
+    header = {
+        color1 = Color(106, 176, 76),
+        color2 = Color(186, 220, 88),
+    },
+    title = {
+        font = lotus.fonts.default,
+        color = Color(246, 241, 221),
+    },
+    frame = {
+        color = Color(246, 241, 221),
+    },
+    scrollbar = {
+        color = Color(245, 231, 176),
+    },
+    handle = {
+        color1 = Color(106, 176, 76),
+        color2 = Color(186, 220, 88),
+    },
+    button = {
+        color3 = Color(106, 176, 76),
+        color4 = Color(186, 220, 88),
+        color1 = Color(248, 199, 151),
+        color2 = Color(242, 232, 184),
     },
 }
 

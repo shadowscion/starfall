@@ -69,9 +69,9 @@ function meta:AddElement(context, element)
     end
 
     element.id = table.insert(self.contexts[context].elements, element)
-    element.menu = self
+    --element.menu = self
     element.context = context
-    element.Invalidate = function(e)
+    element.InvalidateContext = function(e)
         if self.contexts[context].debug then
             printMessage(2, string.format("\n\nLotus Debugger: \n\tContext <%s> invalidated by <%s> <%d>.", context, element._class, element.id))
         end
@@ -86,10 +86,10 @@ end
 
 ]]
 function meta:InvalidateContext(context)
-    if self.contexts[context] then self.contexts[context].invalidate = true end
-end
-
-function meta:Invalidate()
+    if self.contexts[context] then
+        self.contexts[context].invalidate = true
+        return
+    end
     for _, context in pairs(self.contexts) do
         context.invalidate = true
     end

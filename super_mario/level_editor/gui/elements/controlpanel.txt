@@ -1,0 +1,254 @@
+--@name super_mario/level_editor/gui/elements/controlpanel
+--@author shadowscion
+--@client
+--@include super_mario/level_editor/gui/tools/place.txt
+--@include super_mario/level_editor/gui/tools/remove.txt
+--@include super_mario/level_editor/gui/tools/load.txt
+--@include super_mario/level_editor/gui/tools/save.txt
+--@include super_mario/level_editor/gui/tools/reset.txt
+
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+editor.toollist = {
+}
+
+function editor.createTool(toolname)
+    editor.toollist[toolname] = {
+        onUse = function()
+        end,
+        info = "No info."
+    }
+    return editor.toollist[toolname]
+end
+
+function editor.getToolInfo(toolname)
+    if editor.toollist[toolname] then
+        return editor.toollist[toolname].info
+    end
+    return "Invalid tool."
+end
+
+require("super_mario/level_editor/gui/tools/place.txt")
+require("super_mario/level_editor/gui/tools/remove.txt")
+require("super_mario/level_editor/gui/tools/load.txt")
+require("super_mario/level_editor/gui/tools/save.txt")
+require("super_mario/level_editor/gui/tools/reset.txt")
+
+
+--[[
+
+]]
+local label = lotus.util.CreateClass("label", "element")
+
+function  label:OnInitialize()
+    self.text = "label is too long to fit on this bitch"
+    self.font = lotus.fonts.label
+    self.color = Color(0, 0, 0)
+end
+
+function label:SetText(text, font)
+    if font then self.font = font end
+    if text then
+        if self.w and self.h then
+            render.setFont(self.font)
+            local w, h = render.getTextSize(text)
+            w = w / string.len(text)
+
+            local len = 0
+            local str = ""
+            for word in text:gmatch("%S+") do
+                len = len + string.len(word) * w
+                if len > self.w then
+                    len = 0
+                    str = str .. "\n"
+                end
+                str = str .. word .. " "
+            end
+            self.text = string.trim(str)
+        else
+            self.text = text
+        end
+    end
+    if self.InvalidateContext then
+        self:InvalidateContext()
+    end
+end
+
+function label:OnDraw()
+    render.setFont(self.font)
+    render.setColor(self.color)
+    render.drawText(self.x, self.y, self.text, 3)
+end
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("controlpanel", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    -- main
+    self.panel = lotus.CreateElement("frame", editor.menu, self.context)
+    self.panel:SetTitle("CONTROL PANEL")
+    self.panel:SetPos(256, editor.placement.panel.h)
+    self.panel:SetSize(256, 512 - editor.placement.panel.h)
+
+    -- tools
+    self.toolpanel = lotus.CreateElement("frame", editor.menu, self.context)
+    self.toolpanel:SetTitle("TOOLS")
+    self.toolpanel:SetPos(self.panel.frame.x, self.panel.frame.y)
+    self.toolpanel:SetSize(128, 128 - 30)
+
+    -- info
+    self.infopanel = lotus.CreateElement("frame", editor.menu, self.context)
+    self.infopanel:SetTitle("INFO")
+    self.infopanel:SetPos(512 - 128, self.panel.frame.y)
+    self.infopanel:SetSize(128, 128 - 30)
+
+    self.infolabel = lotus.CreateElement("label", editor.menu, self.context)
+    self.infolabel:SetText("info")
+    self.infolabel:SetPos(self.infopanel.frame.x + 6, self.infopanel.frame.y + 8)
+    self.infolabel:SetSize(self.infopanel.frame.w - 12, self.infopanel.frame.h - 16)
+
+    --
+    self:CreateButtons()
+
+    lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
+        if not self.context or not onscreen or cursory < self.panel.frame.y or cursorx < self.panel.frame.x then
+            return
+        end
+        if lotus.util.PointInRectangle(cursorx, cursory, self.toolpanel.frame.x, self.toolpanel.frame.y, self.toolpanel.frame.w, self.toolpanel.frame.h) then
+            for name, button in pairs(self.buttons) do
+                if button:Hovered(cursorx, cursory, onscreen) then
+                    if self.button_hover ~= name then
+                        self.infolabel:SetText(editor.getToolInfo(name))
+                        self.button_hover = name
+                    end
+                    break
+                end
+            end
+            return
+        end
+        if self.button_hover then
+            self.infolabel:SetText(editor.getToolInfo(self.tool))
+            self.button_hover = nil
+        end
+    end)
+    lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not self.context or not onscreen then
+            return
+        end
+        if lotus.util.PointInRectangle(cursorx, cursory, self.toolpanel.frame.x, self.toolpanel.frame.y, self.toolpanel.frame.w, self.toolpanel.frame.h) then
+            for _, button in pairs(self.buttons) do
+                if button:Click(cursorx, cursory, onscreen) then
+                    break
+                end
+            end
+        end
+    end)
+    lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        for _, button in pairs(self.buttons) do
+            button:OnRelease(cursorx, cursory, onscreen)
+        end
+    end)
+end
+
+
+--[[
+
+]]
+function meta:CreateButtons()
+    self.buttons = {}
+
+    -- place/remove
+    self.buttons.place = lotus.CreateElement("button", editor.menu, self.context)
+    self.buttons.place:SetText("Place")
+    self.buttons.place:SetPos(self.toolpanel.frame.x + 3, self.toolpanel.frame.y + 2)
+    self.buttons.place:SetSize(60, 24)
+    self.buttons.place.OnRelease = function() end
+    self.buttons.place.OnPress = function(btn)
+        self.buttons.place.active = true
+        self.buttons.remove.active = false
+        self.tool = "place"
+        self.infolabel:SetText(editor.toollist[self.tool].info)
+    end
+
+    self.buttons.remove = lotus.CreateElement("button", editor.menu, self.context)
+    self.buttons.remove:SetText("Remove")
+    self.buttons.remove:SetPos(self.toolpanel.frame.x + 65, self.toolpanel.frame.y + 2)
+    self.buttons.remove:SetSize(60, 24)
+    self.buttons.remove.OnRelease = function() end
+    self.buttons.remove.OnPress = function(btn)
+        self.buttons.place.active = false
+        self.buttons.remove.active = true
+        self.tool = "remove"
+        self.infolabel:SetText(editor.toollist[self.tool].info)
+    end
+
+    self.buttons.place:OnPress()
+
+    -- save/load
+    self.buttons.save = lotus.CreateElement("button", editor.menu, self.context)
+    self.buttons.save:SetText("Save")
+    self.buttons.save:SetPos(self.toolpanel.frame.x + 3, self.toolpanel.frame.y + 28)
+    self.buttons.save:SetSize(60, 24)
+    self.buttons.save.OnRelease = function() end
+    self.buttons.save.OnPress = function(btn)
+    end
+
+    self.buttons.load = lotus.CreateElement("button", editor.menu, self.context)
+    self.buttons.load:SetText("Load")
+    self.buttons.load:SetPos(self.toolpanel.frame.x + 65, self.toolpanel.frame.y + 28)
+    self.buttons.load:SetSize(60, 24)
+    self.buttons.load.OnRelease = function() end
+    self.buttons.load.OnPress = function(btn)
+    end
+
+    -- reset
+    self.buttons.reset = lotus.CreateElement("button", editor.menu, self.context)
+    self.buttons.reset:SetText("Reset")
+    self.buttons.reset:SetPos(self.toolpanel.frame.x + 65, self.toolpanel.frame.y + 28 + 26)
+    self.buttons.reset:SetSize(60, 24)
+    self.buttons.reset.OnRelease = function() end
+    self.buttons.reset.OnPress = function(btn)
+        if btn.stage == 2 then return end
+        if not btn.stage then
+            btn.stage = 1
+            btn:SetText("Really?")
+            timer.simple(0.75, function()
+                btn.active = false
+                btn.stage = nil
+                btn:SetText("Reset")
+            end)
+            return
+        end
+        if btn.stage == 1 then
+            btn.active = true
+            btn.stage = 2
+            btn:SetText("Poof!")
+            editor.toollist["reset"].onUse(editor.placement.grid_center)
+            return
+        end
+    end
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+
+end

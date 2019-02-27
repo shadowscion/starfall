@@ -13,6 +13,36 @@ local lotus = lotus
 --[[
 
 ]]
+local ghost = lotus.util.CreateClass("ghost", "element")
+
+function ghost:OnDraw()
+    if not self.draw then
+        return
+    end
+    render.drawRectOutline(self.x, self.y, self.w, self.h)
+end
+
+function ghost:SetIcon(icon)
+    if icon then
+        self.icon = icon
+        if self.InvalidateContext then
+            self:InvalidateContext()
+        end
+    else
+        if self.icon then
+            self.icon = nil
+            self.draw = false
+            if self.InvalidateContext then
+                self:InvalidateContext()
+            end
+        end
+    end
+end
+
+
+--[[
+
+]]
 local meta = lotus.util.CreateClass("placement", "element")
 
 
@@ -21,72 +51,74 @@ local meta = lotus.util.CreateClass("placement", "element")
 ]]
 function meta:OnInitialize()
     --
-    self.panel = lotus.CreateElement("frame")
+    self.panel = lotus.CreateElement("frame", editor.menu, self.context)
 
     self.panel:SetTitle("TILE PLACEMENT")
     self.panel:SetPos(0, 0)
     self.panel:SetSize(512, 256 + self.panel.header.h)
     self.panel.frame.draw = false
 
-    self.menu:AddElement(self.context, self.panel)
-
     --
-    self.grid_center = lotus.CreateElement("tile_grid")
-
+    self.grid_center = lotus.CreateElement("tile_grid", editor.menu, "grid_active")
     self.grid_center:SetPos(128, self.panel.header.h)
     self.grid_center:SetSize(256, 256)
 
-    self.menu:AddElement("grid_active", self.grid_center)
+    self.grid_center_ghost = lotus.CreateElement("ghost", editor.menu, "overlay")
+    self.grid_center_ghost:SetSize(16, 16)
 
     --
-    self.grid_left = lotus.CreateElement("tile_grid")
-
+    self.grid_left = lotus.CreateElement("tile_grid", editor.menu, "grid_inactive")
     self.grid_left:SetPos(-128, self.panel.header.h)
     self.grid_left:SetSize(256, 256)
     self.grid_left:SetGrid(8, 15)
     self.grid_left:SetBlur(10, 2, 10)
 
-    self.menu:AddElement("grid_inactive", self.grid_left)
-
     --
-    self.grid_right = lotus.CreateElement("tile_grid")
-
+    self.grid_right = lotus.CreateElement("tile_grid", editor.menu, "grid_inactive")
     self.grid_right:SetPos(256 + 128, self.panel.header.h)
     self.grid_right:SetSize(256, 256)
     self.grid_right:SetGrid(0, 7)
     self.grid_right:SetBlur(10, 2, 10)
 
-    self.menu:AddElement("grid_inactive", self.grid_right)
-
     --
     lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
         if not onscreen or not self.context or cursory > self.panel.h then
+            self.grid_center_ghost.draw = false
             return
         end
         local row, col, num, onGrid = self.grid_center:GetCursorCell(cursorx, cursory)
         if onGrid and self.last_hover ~= num then
             self.last_hover = num
-            if self.placer_active then
-                self.grid_center:SetGridContents(row - 1, col - 1, editor.selection.current_selection)
+
+            self.grid_center_ghost.draw = true
+            self.grid_center_ghost:SetPos(self.grid_center.x + (col - 1) * 16, self.grid_center.y + (row - 1) * 16)
+
+            if self.active and (editor.controlpanel.tool == "place" or editor.controlpanel.tool == "remove") then
+                editor.toollist[editor.controlpanel.tool].onUse(row - 1, col - 1, self.grid_center, editor.selection.current_selection)
+            else
+                self.active = false
             end
         end
     end)
-
     lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
         if not onscreen or not self.context or cursory > self.panel.h then
             return
         end
         local row, col, num, onGrid = self.grid_center:GetCursorCell(cursorx, cursory)
         if onGrid and editor.selection.current_selection then
-            self.placer_active = true
-            self.grid_center:SetGridContents(row - 1, col - 1, editor.selection.current_selection)
+            if editor.controlpanel.tool == "place" or editor.controlpanel.tool == "remove" then
+                self.active = true
+                editor.toollist[editor.controlpanel.tool].onUse(row - 1, col - 1, self.grid_center, editor.selection.current_selection)
+            else
+                self.active = false
+            end
         end
     end)
     lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
         if not self.context then
             return
         end
-        self.placer_active = false
+        self.active = false
     end)
 end
 

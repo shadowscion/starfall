@@ -1,0 +1,24 @@
+--@name super_mario/level_editor/gui/tools/reset
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+local tool = editor.createTool("reset")
+
+tool.onUse = function(grid)
+    if not grid then 
+        return 
+    end
+    grid:ClearGridContents()
+end
+
+tool.info = "Clears active grid."

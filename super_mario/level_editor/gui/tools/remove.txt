@@ -1,0 +1,24 @@
+--@name super_mario/level_editor/gui/tools/remove
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+local tool = editor.createTool("remove")
+
+tool.onUse = function(row, col, grid, cell)
+    if  not grid then
+        return
+    end
+    grid:SetGridContents(row, col, nil)
+end
+
+tool.info = "Press (or hold) E to remove sprite."

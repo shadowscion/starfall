@@ -1,0 +1,24 @@
+--@name super_mario/level_editor/gui/tools/place
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+local tool = editor.createTool("place")
+
+tool.onUse = function(row, col, grid, cell)
+    if  not grid or not cell then
+        return
+    end
+    grid:SetGridContents(row, col, cell)
+end
+
+tool.info = "Press (or hold) E to place selected sprite."

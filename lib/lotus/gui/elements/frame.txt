@@ -73,8 +73,8 @@ function meta:Format()
     self.frame.w = self.w
     self.frame.h = self.h - self.header.h
 
-    if self.Invalidate then
-        self:Invalidate()
+    if self.InvalidateContext then
+        self:InvalidateContext()
     end
 end
 

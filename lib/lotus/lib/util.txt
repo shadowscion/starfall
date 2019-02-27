@@ -18,8 +18,11 @@ function util.CreateClass(className, baseClass)
 
     class._class = className
 
-    function class:Create()
+    function class:Create(menu, context)
         local instance = setmetatable({}, class_mt)
+        if menu and context then
+            menu:AddElement(context, instance)
+        end
         if instance.Initialize then
             instance:Initialize()
         end

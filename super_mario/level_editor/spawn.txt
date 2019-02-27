@@ -1,0 +1,22 @@
+--@name super_mario/level_editor/spawn
+--@author shadowscion
+--@shared
+--@include super_mario/level_editor/gui/editor.txt
+
+--[[
+
+]]
+if SERVER then
+    local pos, ang = localToWorld(Vector(-54, 0, 0), Angle(0, 0, 0), chip():getPos(), chip():getAngles())
+    prop.createComponent(pos, ang, "starfall_screen", "models/hunter/plates/plate2x2.mdl", true):linkComponent(chip())
+
+    return
+end
+
+setName("SMB Level Editor")
+
+
+--[[
+
+]]
+require("super_mario/level_editor/gui/editor.txt")

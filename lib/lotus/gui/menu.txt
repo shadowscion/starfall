@@ -69,6 +69,7 @@ function meta:AddElement(context, element)
     end
 
     element.id = table.insert(self.contexts[context].elements, element)
+    element.menu = self
     element.context = context
     element.Invalidate = function(e)
         self:InvalidateContext(e.context)

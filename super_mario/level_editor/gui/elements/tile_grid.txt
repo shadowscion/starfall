@@ -1,0 +1,170 @@
+--@name super_mario/level_editor/gui/elements/tile_grid
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+local black = Color(0, 0, 0)
+local white = Color(255, 255, 255)
+local white_alpha = Color(255, 255, 255, 50)
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("tile_grid", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    self.contents = {}
+
+    self.color1 = Color(228, 241, 254, 255)
+    self.color2 = Color(137, 196, 244, 255)
+    self.color3 = Color(228, 241, 254, 55)
+    self.color4 = Color(137, 196, 244, 55)
+
+    self:SetGrid()
+end
+
+
+--[[
+
+]]
+function meta:SetGridContents(row, col, contents)
+    row = math.clamp(row or 0, 0, 15)
+    col = math.clamp(col or 0, 0, 15)
+
+    self.contents[row] = self.contents[row] or {}
+    self.contents[row][col] = contents
+
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetGrid(xmin, xmax, ymin, ymax)
+    self.ymin = math.clamp(ymin or 0, 0, 15)
+    self.ymax = math.clamp(ymax or 15, 0, 15)
+    self.xmin = math.clamp(xmin or 0, 0, 15)
+    self.xmax = math.clamp(xmax or 15, 0, 15)
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:SetBlur(blurx, blury, passes)
+    self.blur = {
+        blurx = blurx or 5,
+        blury = blury or 5,
+        passes = passes or 5,
+    }
+    if self.Invalidate then
+        self:Invalidate()
+    end
+end
+
+
+--[[
+
+]]
+function meta:DrawGridOutline()
+    render.setColor(black)
+    for y = self.ymin, self.ymax do
+        for x = self.xmin, self.xmax do
+            render.drawRectOutline(self.x + x * 16, self.y + y * 16, 16, 16)
+        end
+    end
+end
+
+
+--[[
+
+]]
+function meta:DrawGridBlur(blurx, blury, passes)
+    self:DrawGridOutline()
+
+    render.enableScissorRect(
+        self.x + (self.xmin + 0) * 16,
+        self.y + (self.ymin + 0) * 16,
+        self.x + (self.xmax + 1) * 16,
+        self.y + (self.ymax + 1) * 16)
+
+    for i = 0, passes do
+        local theta = math.pi * 2 * i / passes
+        local bx = math.cos(theta) * blurx
+        local by = math.sin(theta) * blury
+
+        for y = self.ymin, self.ymax do
+            for x = self.xmin, self.xmax do
+                render.setColor(math.mod(y * 16 + x + y, 2) == 0 and self.color3 or self.color4)
+                render.drawRectFast(bx + self.x + x * 16, by + self.y + y * 16, 16, 16)
+            end
+        end
+
+        render.setColor(Color(255, 0, 0, 45)) --white)
+        for y = self.ymin, self.ymax do
+            for x = self.xmin, self.xmax do
+                if not self.contents[y] or not self.contents[y][x] then
+                    continue
+                end
+                render.drawRectFast(bx + self.x + x * 16, by + self.y + y * 16, 16, 16)
+            end
+        end
+    end
+
+    render.disableScissorRect()
+end
+
+
+--[[
+
+]]
+function meta:DrawGrid()
+    for y = self.ymin, self.ymax do
+        for x = self.xmin, self.xmax do
+            render.setColor(math.mod(y * 16 + x + y, 2) == 0 and self.color1 or self.color2)
+            render.drawRectFast(self.x + x * 16, self.y + y * 16, 16, 16)
+        end
+    end
+
+    render.setColor(Color(255, 0, 0)) --white)
+    for y = self.ymin, self.ymax do
+        for x = self.xmin, self.xmax do
+            if not self.contents[y] or not self.contents[y][x] then
+                continue
+            end
+            render.drawRectFast(self.x + x * 16, self.y + y * 16, 16, 16)
+        end
+    end
+
+    render.setColor(black)
+    render.drawRectOutline(self.x, self.y, self.w, self.h)
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+    if self.blur then
+        self:DrawGridBlur(self.blur.x or 5, self.blur.y or 5, self.blur.passes or 5)
+    else
+        self:DrawGrid()
+    end
+end

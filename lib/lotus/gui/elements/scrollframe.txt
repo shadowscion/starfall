@@ -175,7 +175,7 @@ end
 
 ]]
 function meta:SetTitle(title, font, nodraw)
-    if nodraw then 
+    if nodraw then
         self.title.draw = false
     else
         self.title.font = font or self.title.font

@@ -1,0 +1,38 @@
+--@name super_mario/level_editor/gui/elements/tools
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("tools", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    self.panel = lotus.CreateElement("frame")
+
+    self.panel:SetTitle("TOOLS")
+    self.panel:SetPos(256, editor.placement.panel.h)
+    self.panel:SetSize(256, 512 - editor.placement.panel.h)
+
+    self.menu:AddElement(self.context, self.panel)
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+
+end

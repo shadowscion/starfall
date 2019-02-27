@@ -89,11 +89,11 @@ function lotus.CreateMenu(className)
     end
 end
 
-function lotus.CreateElement(className)
+function lotus.CreateElement(className, menu, context)
     if not lotus.util.classes[className] then
         className = "element"
     end
-    return lotus.util.classes[className]:Create()
+    return lotus.util.classes[className]:Create(menu, context)
 end
 
 

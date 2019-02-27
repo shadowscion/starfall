@@ -1,0 +1,68 @@
+--@name super_mario/level_editor/gui/elements/placement
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+local meta = lotus.util.CreateClass("placement", "element")
+
+
+--[[
+
+]]
+function meta:OnInitialize()
+    --
+    self.panel = lotus.CreateElement("frame")
+
+    self.panel:SetTitle("TILE PLACEMENT")
+    self.panel:SetPos(0, 0)
+    self.panel:SetSize(512, 256 + self.panel.header.h)
+    self.panel.frame.draw = false
+
+    self.menu:AddElement(self.context, self.panel)
+
+    --
+    self.grid_center = lotus.CreateElement("tile_grid")
+
+    self.grid_center:SetPos(128, self.panel.header.h)
+    self.grid_center:SetSize(256, 256)
+
+    self.menu:AddElement("background", self.grid_center)
+
+    --
+    self.grid_left = lotus.CreateElement("tile_grid")
+
+    self.grid_left:SetPos(-128, self.panel.header.h)
+    self.grid_left:SetSize(256, 256)
+    self.grid_left:SetGrid(8, 15)
+    self.grid_left:SetBlur(10, 2, 10)
+
+    self.menu:AddElement("background", self.grid_left)
+
+    --
+    self.grid_right = lotus.CreateElement("tile_grid")
+
+    self.grid_right:SetPos(256 + 128, self.panel.header.h)
+    self.grid_right:SetSize(256, 256)
+    self.grid_right:SetGrid(0, 7)
+    self.grid_right:SetBlur(10, 2, 10)
+
+    self.menu:AddElement("background", self.grid_right)
+end
+
+
+--[[
+
+]]
+function meta:OnDraw()
+
+end

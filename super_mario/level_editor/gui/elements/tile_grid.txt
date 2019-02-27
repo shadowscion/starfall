@@ -36,6 +36,17 @@ end
 
 
 --[[
+    returns row, col, index, and ongrid
+]]
+function meta:GetCursorCell(cursorx, cursory)
+    local row = math.ceil(((cursory - self.y) * 16) / 256)
+    local col = math.ceil(((cursorx - self.x) * 16) / 256)
+    local num = (row - 1) * 16 + col
+    return row, col, num, row > self.ymin and row <= (self.ymax + 1) and col > self.xmin and col <= (self.xmax + 1)
+end
+
+
+--[[
 
 ]]
 function meta:SetGridContents(row, col, contents)
@@ -117,15 +128,18 @@ function meta:DrawGridBlur(blurx, blury, passes)
             end
         end
 
-        render.setColor(Color(255, 0, 0, 45)) --white)
+        render.setColor(white_alpha)
+        render.setMaterial(editor.tilesheet.texture)
         for y = self.ymin, self.ymax do
             for x = self.xmin, self.xmax do
                 if not self.contents[y] or not self.contents[y][x] then
                     continue
                 end
-                render.drawRectFast(bx + self.x + x * 16, by + self.y + y * 16, 16, 16)
+                local icon = self.contents[y][x]
+                render.drawTexturedRectUVFast(bx + self.x + x * 16, by + self.y + y * 16, 16, 16, icon.u0, icon.v0, icon.u1, icon.v1, true)
             end
         end
+        render.setMaterial()
     end
 
     render.disableScissorRect()
@@ -143,15 +157,18 @@ function meta:DrawGrid()
         end
     end
 
-    render.setColor(Color(255, 0, 0)) --white)
+    render.setColor(white)
+    render.setMaterial(editor.tilesheet.texture)
     for y = self.ymin, self.ymax do
         for x = self.xmin, self.xmax do
             if not self.contents[y] or not self.contents[y][x] then
                 continue
             end
-            render.drawRectFast(self.x + x * 16, self.y + y * 16, 16, 16)
+            local icon = self.contents[y][x]
+            render.drawTexturedRectUVFast(self.x + x * 16, self.y + y * 16, 16, 16, icon.u0, icon.v0, icon.u1, icon.v1, true)
         end
     end
+    render.setMaterial()
 
     render.setColor(black)
     render.drawRectOutline(self.x, self.y, self.w, self.h)

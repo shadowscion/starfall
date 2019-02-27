@@ -53,7 +53,7 @@ end
 ]]
 function meta:DefaultCallbacks()
     lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
-        if not onscreen or not self.context then
+        if self.active or not onscreen or not self.context then
             return
         end
         if lotus.util.PointInRectangle(cursorx, cursory, self.button.x, self.button.y, self.button.w, self.button.h) then
@@ -62,11 +62,13 @@ function meta:DefaultCallbacks()
         end
     end)
     lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
-        if not self.context then
+        if not self.context or not onScreen then
             return
         end
-        self:OnRelease(timer.curtime())
-        self:Invalidate()
+        if self.active then
+            self:OnRelease(timer.curtime())
+            self:Invalidate()
+        end
     end)
 end
 
@@ -132,7 +134,7 @@ function meta:OnDraw()
     if self.text.draw then
         render.setFont(self.text.font)
         render.setColor(self.text.color)
-        render.drawText(self.text.x, self.text.y, self.text.text, 1)
+        render.drawText(self.text.x, self.text.y - 1, self.text.text, 1)
     end
 end
 

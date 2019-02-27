@@ -36,7 +36,7 @@ function meta:OnInitialize()
     self.grid_center:SetPos(128, self.panel.header.h)
     self.grid_center:SetSize(256, 256)
 
-    self.menu:AddElement("background", self.grid_center)
+    self.menu:AddElement("grid_active", self.grid_center)
 
     --
     self.grid_left = lotus.CreateElement("tile_grid")
@@ -46,7 +46,7 @@ function meta:OnInitialize()
     self.grid_left:SetGrid(8, 15)
     self.grid_left:SetBlur(10, 2, 10)
 
-    self.menu:AddElement("background", self.grid_left)
+    self.menu:AddElement("grid_inactive", self.grid_left)
 
     --
     self.grid_right = lotus.CreateElement("tile_grid")
@@ -56,7 +56,38 @@ function meta:OnInitialize()
     self.grid_right:SetGrid(0, 7)
     self.grid_right:SetBlur(10, 2, 10)
 
-    self.menu:AddElement("background", self.grid_right)
+    self.menu:AddElement("grid_inactive", self.grid_right)
+
+    --
+    lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.context or cursory > self.panel.h then
+            return
+        end
+        local row, col, num, onGrid = self.grid_center:GetCursorCell(cursorx, cursory)
+        if onGrid and self.last_hover ~= num then
+            self.last_hover = num
+            if self.placer_active then
+                self.grid_center:SetGridContents(row - 1, col - 1, editor.selection.current_selection)
+            end
+        end
+    end)
+
+    lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.context or cursory > self.panel.h then
+            return
+        end
+        local row, col, num, onGrid = self.grid_center:GetCursorCell(cursorx, cursory)
+        if onGrid and editor.selection.current_selection then
+            self.placer_active = true
+            self.grid_center:SetGridContents(row - 1, col - 1, editor.selection.current_selection)
+        end
+    end)
+    lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        if not self.context then
+            return
+        end
+        self.placer_active = false
+    end)
 end
 
 

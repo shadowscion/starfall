@@ -7,39 +7,48 @@
 --@include super_mario/level_editor/gui/elements/selection.txt
 --@include super_mario/level_editor/gui/elements/tools.txt
 --@include super_mario/level_editor/gui/elements/tile_grid.txt
+--@include super_mario/res/tiles.txt
+
 
 --[[
 
 ]]
 editor = {}
 
+
+--[[
+
+]]
 require("lib/lotus/init.txt")
+
+editor.tilesheet = require("super_mario/res/tiles.txt")
 
 require("super_mario/level_editor/gui/elements/placement.txt")
 require("super_mario/level_editor/gui/elements/selection.txt")
 require("super_mario/level_editor/gui/elements/tools.txt")
 require("super_mario/level_editor/gui/elements/tile_grid.txt")
 
+
 --[[
 
 ]]
 editor.menu = lotus.CreateMenu()
+editor.debug = true
 
-editor.menu:AddContext("background", true)
-editor.menu:AddContext("foreground", true)
-
-editor.menu:ClearContext("background", Color(255, 255, 255))
+editor.menu:AddContext("grid_inactive", editor.debug)
+editor.menu:AddContext("grid_active", editor.debug)
+editor.menu:AddContext("menu", editor.debug)
 
 
 --[[
 
 ]]
-editor.placement = lotus.CreateElement("placement", editor.menu, "foreground")
-editor.selection = lotus.CreateElement("selection", editor.menu, "foreground")
-editor.tools = lotus.CreateElement("tools", editor.menu, "foreground")
+editor.placement = lotus.CreateElement("placement", editor.menu, "menu")
+editor.selection = lotus.CreateElement("selection", editor.menu, "menu")
+editor.tools = lotus.CreateElement("tools", editor.menu, "menu")
 
 for _, context in pairs(editor.menu.contexts) do
     for _, element in pairs(context.elements) do
-        element:SetSkin(lotus.skins["orange"])
+        element:SetSkin(lotus.skins["purple"])
     end
 end

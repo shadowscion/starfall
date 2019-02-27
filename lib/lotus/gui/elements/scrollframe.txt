@@ -66,17 +66,7 @@ function meta:OnInitialize()
         draw = true,
     }
     self.contents = {
-        Draw = function(self, minx, miny, w, h, scroll)
-            render.setColor(Color(255, 0, 0))
-            render.setFont(lotus.fonts.default_small)
-
-            local size = w / 11
-
-            for y = 0, math.floor(self.length / size) do
-                for x = 0, 10 do
-                    render.drawText(minx + x * size, scroll + y * size, (y * 10 + x) .. "", 3)
-                end
-            end
+        Draw = function(self, scroll)
         end,
         length = 0,
         scroll = 0,
@@ -96,11 +86,13 @@ function meta:OnInitialize()
         if not self.context then
             return
         end
-        self.handle.active = false
-        self:Invalidate()
+        if self.handle.active then
+            self.handle.active = false
+            self:Invalidate()
+        end
     end)
     lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
-        if not self.handle.active or not self.context then
+        if not onscreen or not self.handle.active or not self.context then
             return
         end
 
@@ -162,7 +154,7 @@ function meta:Format()
 
     self.handle.x = self.scrollbar.x
     self.handle.y = self.scrollbar.y
-    self.handle.h = self.frame.h^2 / self.contents.length
+    self.handle.h = (self.frame.h^2 / self.contents.length) * 1.6667
     self.contents.scroll = self.frame.y
 
     if self.Invalidate then
@@ -246,7 +238,7 @@ function meta:OnDraw()
     end
     if self.contents.draw then
         render.enableScissorRect(self.frame.x, self.frame.y, self.frame.x + self.frame.w, self.frame.y + self.frame.h)
-        self.contents:Draw(self.frame.x, self.frame.y, self.frame.w, self.frame.h, self.contents.scroll)
+        self.contents:Draw(self.contents.scroll)
         render.disableScissorRect()
     end
 end

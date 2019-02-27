@@ -1,0 +1,106 @@
+--@name lib/tilesheet
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local meta = {}
+local meta_mt = { __index = meta }
+
+
+--[[
+
+]]
+function meta:Create(url)
+    local instance = setmetatable({
+        dict = {},
+        sets = {},
+        shift_uv0 = 0,
+        shift_uv1 = 0,
+    }, meta_mt)
+
+    if url then
+        instance:SetMaterialFromURL(url)
+    end
+
+    return instance
+end
+
+
+--[[
+
+]]
+function meta:SetUVShift(uv0, uv1)
+    self.shift_uv0 = uv0 or 0 --1/3,
+    self.shift_uv1 = uv1 or 0 --1/3 - 2/3,
+end
+
+
+--[[
+
+]]
+function meta:SetMaterialFromURL(url)
+    self.texture = material.create("UnlitGeneric")
+    self.texture.isLoaded = false
+
+    self.texture:setTextureURL("$basetexture", url, function(m)
+        if m then timer.simple(5, function() m.isLoaded = true end) end
+    end)
+end
+
+
+--[[
+
+]]
+function meta:AddSprite(dict, x0, y0, size)
+    local size = size or 16
+
+    local u0 = x0 + self.shift_uv0
+    local v0 = y0 + self.shift_uv0
+    local u1 = x0 + self.shift_uv1 + size
+    local v1 = y0 + self.shift_uv1 + size
+
+    return {
+        size = size,
+        dict = dict,
+        u0 = u0/1024,
+        v0 = v0/1024,
+        u1 = u1/1024,
+        v1 = v1/1024,
+    }
+end
+
+
+--[[
+
+]]
+function meta:AddSpriteSet(name, size, rows, cols, data)
+    local size = size or 16
+
+    local set = {
+        rows = rows,
+        cols = cols,
+        size = size,
+    }
+
+    for i = 1, #data, 2 do
+        local sprite = self:AddSprite(#self.dict + 1, data[i], data[i + 1])
+
+        table.insert(self.dict, sprite)
+        table.insert(set, sprite)
+    end
+
+    if not self.sets[name] then self.sets[name] = {} end
+
+    table.insert(self.sets[name], set)
+
+    return set
+end
+
+
+--[[
+
+]]
+return meta

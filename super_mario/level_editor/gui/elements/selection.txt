@@ -1,6 +1,7 @@
 --@name super_mario/level_editor/gui/elements/selection
 --@author shadowscion
 --@client
+--@include lib/binpack.txt
 
 
 --[[
@@ -8,6 +9,11 @@
 ]]
 local editor = editor
 local lotus = lotus
+
+local binpack = require("lib/binpack.txt")
+
+local color_white = Color(255, 255, 255)
+local color_black = Color(0, 0, 0)
 
 
 --[[
@@ -20,15 +26,182 @@ local meta = lotus.util.CreateClass("selection", "element")
 
 ]]
 function meta:OnInitialize()
+    --
     self.panel = lotus.CreateElement("scrollframe")
 
     self.panel:SetTitle("TILE SELECTION")
     self.panel:SetPos(0, editor.placement.panel.h)
     self.panel:SetSize(256, 512 - editor.placement.panel.h)
     self.panel:SetContentsLength(512)
-    self.panel.contents.Draw = function() end
 
     self.menu:AddElement(self.context, self.panel)
+
+    --
+    self.iconlist = {}
+    self.iconlist.color_background = Color(114, 180, 255)
+
+    self:BuildIconList()
+
+    self.panel.contents.Draw = function(contents, scroll)
+        self:DrawIconlistHeaders(scroll)
+        self:DrawIconList(scroll)
+    end
+    self.panel.OnScroll = function(panel, ymin, ymax, yval, ydelta)
+        self.iconlist.ymin = math.clamp(math.floor(((panel.frame.y - panel.contents.scroll) * self.iconlist.rows) / panel.contents.length) + 1, 1, self.iconlist.rows)
+        self.iconlist.ymax = math.clamp(math.floor(panel.frame.h / self.iconlist.size_large) + self.iconlist.ymin, 1, self.iconlist.rows)
+    end
+
+    --
+    lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.context or cursory < 256 or cursorx > 256 then
+            return
+        end
+        local row, col, num, onGrid = self:GetCursorCell(cursorx, cursory)
+        if onGrid and self.iconlist.icons[row][col] then
+            self.current_selection = self.iconlist.icons[row][col]
+        end
+    end)
+    lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        if not self.context then
+            return
+        end
+    end)
+end
+
+
+--[[
+    returns row, col, index, and ongrid
+]]
+function meta:GetCursorCell(cursorx, cursory)
+    local row = math.ceil(((cursory - self.panel.contents.scroll) / self.panel.contents.length) * self.iconlist.rows)
+    local col = math.ceil(((cursorx - self.iconlist.xoff) / (self.iconlist.cols * self.iconlist.size_large)) * self.iconlist.cols)
+    local num = (row - 1) * self.iconlist.cols + col
+    return row, col, num, row >= self.iconlist.ymin and row <= self.iconlist.ymax and col > 0 and col <= self.iconlist.cols
+end
+
+
+--[[
+
+]]
+function meta:DrawIconlistHeaders(scroll)
+    -- offsets
+    local xoff = self.iconlist.xoff + (self.iconlist.size_large * self.iconlist.cols) / 2
+    local yoff = scroll + 2
+
+    -- category headers
+    render.setColor(self.panel.header.color1)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or not self.iconlist.icons[y].text then continue end
+        render.drawRectFast(self.panel.frame.x + 4, (y - 1) * self.iconlist.size_large + yoff, self.panel.frame.w - 8, self.panel.header.h)
+    end
+    render.setColor(self.panel.header.color2)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or not self.iconlist.icons[y].text then continue end
+        render.drawRectFast(self.panel.frame.x + 4, (y - 1) * self.iconlist.size_large + yoff, self.panel.frame.w - 8, self.panel.header.h / 2)
+    end
+    render.setColor(color_black)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or not self.iconlist.icons[y].text then continue end
+        render.drawRectOutline(self.panel.frame.x + 4, (y - 1) * self.iconlist.size_large + yoff, self.panel.frame.w - 8, self.panel.header.h)
+    end
+    render.setFont(self.panel.title.font)
+    render.setColor(self.panel.title.color)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or not self.iconlist.icons[y].text then continue end
+        render.drawText(xoff, (y - 1) * self.iconlist.size_large + yoff - 1, self.iconlist.icons[y].text, 1)
+    end
+end
+
+
+--[[
+
+]]
+function meta:DrawIconList(scroll)
+    render.setColor(self.iconlist.color_background)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or self.iconlist.icons[y].text then continue end
+        for x, icon in pairs(self.iconlist.icons[y]) do
+            render.drawRectFast(self.iconlist.xoff + (x - 1) * self.iconlist.size_large, scroll + (y - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small)
+        end
+    end
+    render.setColor(color_white)
+    render.setMaterial(editor.tilesheet.texture)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or self.iconlist.icons[y].text then continue end
+        for x, icon in pairs(self.iconlist.icons[y]) do
+            render.drawTexturedRectUVFast(self.iconlist.xoff + (x - 1) * self.iconlist.size_large, scroll + (y - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small,
+                icon.u0, icon.v0, icon.u1, icon.v1, true)
+        end
+    end
+    render.setMaterial()
+    render.setColor(color_black)
+    for y = self.iconlist.ymin, self.iconlist.ymax do
+        if not self.iconlist.icons[y] or self.iconlist.icons[y].text then continue end
+        for x, icon in pairs(self.iconlist.icons[y]) do
+            render.drawRectOutline(self.iconlist.xoff + (x - 1) * self.iconlist.size_large, scroll + (y - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small)
+        end
+    end
+end
+
+
+--[[
+
+]]
+function meta:BuildIconList(size)
+    self.iconlist.icons = {}
+    self.iconlist.size_large = size or 24
+    self.iconlist.size_small = self.iconlist.size_large - 1.6667
+
+    self.iconlist.rows = 0
+    self.iconlist.cols = math.floor((self.panel.frame.w - 1) / self.iconlist.size_large)
+    self.iconlist.xoff = self.panel.frame.w / 2 - (self.iconlist.cols * self.iconlist.size_large) / 2 + self.panel.frame.x
+
+    for groupname, groupinfo in lotus.util.SortedPairs(editor.tilesheet.sets) do
+        -- increment once per set for the text
+        self.iconlist.rows = self.iconlist.rows + 1
+
+        self.iconlist.icons[self.iconlist.rows] = {
+            text = string.replace(string.upper(groupname), "_", " "),
+        }
+
+        -- get packed rects
+        local bin = binpack(self.iconlist.cols, 9999)
+        local row = 0
+
+        for i, set in ipairs(groupinfo) do
+            local data = bin:Insert(set.cols, set.rows)
+
+            local xmin = data.x + 1
+            local ymin = data.y + 1
+            local xmax = data.x + data.w
+            local ymax = data.y + data.h
+
+            local num = 0
+            for y = ymin, ymax do
+                local yoff = self.iconlist.rows + y
+
+                if not self.iconlist.icons[yoff] then
+                    self.iconlist.icons[yoff] = {}
+                end
+
+                for x = xmin, xmax do
+                    num = num + 1
+                    if not set[num] then
+                        self.iconlist.icons[yoff][x] = false
+                    end
+
+                    self.iconlist.icons[yoff][x] = set[num]
+                    self.iconlist.icons[yoff][x].index = (yoff - 1) * self.iconlist.cols + x
+                end
+            end
+            row = math.max(row, data.y + data.h)
+        end
+        self.iconlist.rows = self.iconlist.rows + row
+    end
+
+    self.iconlist.ymin = 1
+    self.iconlist.ymax = self.iconlist.rows
+    self.panel:SetContentsLength(self.iconlist.rows * self.iconlist.size_large)
 end
 
 

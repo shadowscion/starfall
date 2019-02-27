@@ -72,6 +72,9 @@ function meta:AddElement(context, element)
     element.menu = self
     element.context = context
     element.Invalidate = function(e)
+        if self.contexts[context].debug then
+            printMessage(2, string.format("\n\nLotus Debugger: \n\tContext <%s> invalidated by <%s> <%d>.", context, element._class, element.id))
+        end
         self:InvalidateContext(e.context)
     end
 
@@ -105,7 +108,7 @@ end
 
 ]]
 function meta:DrawContextDebug(context)
-    local msg = string.format("\tContext: %s\n\tElements:", context.rt)
+    local msg = string.format("\tRT: %s\n\tElements:", context.rt)
 
     render.selectRenderTarget(context.rt)
     render.clear(context.clear, true)
@@ -117,7 +120,7 @@ function meta:DrawContextDebug(context)
     end
     render.selectRenderTarget()
 
-    printMessage(2, string.format("\n\nLotus Debugger: \n%s\n\n", msg))
+    printMessage(2, string.format("\n\nLotus Debugger: \n%s\n", msg))
 end
 
 

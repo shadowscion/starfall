@@ -91,6 +91,58 @@ end
 
 
 --[[
+    compass rose
+]]
+local arrow = {
+    -- right side
+    {
+        Vector(0.0, 0.000000 - 1, 0),
+        Vector(0.152344, 0.847656 - 1, 0),
+        Vector(0.0, 1.000000 - 1, 0),
+    },
+    -- left side
+    {
+        Vector(-0.0, 0.000000 - 1, 0),
+        Vector(-0.0, 1.000000 - 1, 0),
+        Vector(-0.152344, 0.847656 - 1, 0),
+    },
+}
+
+local function GetArrow(x, y, ang, size, yoff)
+    local shapes = { {}, {}, {} }
+
+    for i, vert in ipairs(arrow[1]) do
+        local v = Vector(vert.x, vert.y, 0) * size
+        v.y = v.y - yoff
+        v:rotate(Angle(0, ang, 0))
+        shapes[1][i] = {
+            x = v.x + x,
+            y = v.y + y,
+        }
+    end
+    for i, vert in ipairs(arrow[2]) do
+        local v = Vector(vert.x, vert.y, 0) * size
+        v.y = v.y - yoff
+        v:rotate(Angle(0, ang, 0))
+        shapes[2][i] = {
+            x = v.x + x,
+            y = v.y + y,
+        }
+    end
+
+    return shapes
+end
+
+function util.GenerateCompassRose(x, y, size, yoff)
+    local rose = {}
+    for i = 0, 3 do
+        table.insert(rose, GetArrow(x, y, i * 90, size, yoff))
+    end
+    return rose
+end
+
+
+--[[
 
 ]]
 local function keyValuePairs(state)

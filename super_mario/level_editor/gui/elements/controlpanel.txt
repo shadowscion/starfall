@@ -6,6 +6,7 @@
 --@include super_mario/level_editor/gui/tools/load.txt
 --@include super_mario/level_editor/gui/tools/save.txt
 --@include super_mario/level_editor/gui/tools/reset.txt
+--@include super_mario/level_editor/gui/tools/move.txt
 
 
 --[[
@@ -37,11 +38,21 @@ function editor.getToolInfo(toolname)
     return "Invalid tool."
 end
 
+function editor.resetChunkMap()
+    editor.chunk = {}
+    editor.chunk.grid = {}
+    editor.chunk.row = 0
+    editor.chunk.row_max = 0
+    editor.chunk.col = 0
+    editor.chunk.col_max = 0
+end
+
 require("super_mario/level_editor/gui/tools/place.txt")
 require("super_mario/level_editor/gui/tools/remove.txt")
 require("super_mario/level_editor/gui/tools/load.txt")
 require("super_mario/level_editor/gui/tools/save.txt")
 require("super_mario/level_editor/gui/tools/reset.txt")
+require("super_mario/level_editor/gui/tools/move.txt")
 
 
 --[[
@@ -125,12 +136,13 @@ function meta:OnInitialize()
 
     --
     self:CreateButtons()
+    self:CreateChunkMover()
 
     lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
         if not self.context or not onscreen or cursory < self.panel.frame.y or cursorx < self.panel.frame.x then
             return
         end
-        if lotus.util.PointInRectangle(cursorx, cursory, self.toolpanel.frame.x, self.toolpanel.frame.y, self.toolpanel.frame.w, self.toolpanel.frame.h) then
+        if lotus.util.PointInRectangle(cursorx, cursory, self.panel.frame.x, self.panel.frame.y, self.panel.frame.w, self.panel.frame.h) then
             for name, button in pairs(self.buttons) do
                 if button:Hovered(cursorx, cursory, onscreen) then
                     if self.button_hover ~= name then
@@ -184,6 +196,7 @@ function meta:CreateButtons()
         self.buttons.remove.active = false
         self.tool = "place"
         self.infolabel:SetText(editor.toollist[self.tool].info)
+        editor.placement.grid_center_ghost.border = Color(0, 255, 0, 245)
     end
 
     self.buttons.remove = lotus.CreateElement("button", editor.menu, self.context)
@@ -196,6 +209,7 @@ function meta:CreateButtons()
         self.buttons.remove.active = true
         self.tool = "remove"
         self.infolabel:SetText(editor.toollist[self.tool].info)
+        editor.placement.grid_center_ghost.border = Color(255, 0, 0, 245)
     end
 
     self.buttons.place:OnPress()
@@ -239,12 +253,128 @@ function meta:CreateButtons()
             btn.active = true
             btn.stage = 2
             btn:SetText("Poof!")
-            editor.toollist["reset"].onUse(editor.placement.grid_center)
+            editor.toollist["reset"].onUse()--editor.placement.grid_center)
             return
         end
     end
+
 end
 
+
+--[[
+
+]]
+function meta:CreateChunkMover()
+    self.buttons.move = lotus.CreateElement("button", editor.menu, self.context)
+    self.buttons.move:SetPos(self.infopanel.frame.x, self.infopanel.frame.y + self.infopanel.frame.h)
+    self.buttons.move:SetSize(128, 122)
+    self.buttons.move:DefaultCallbacks()
+    self.buttons.move.OnRelease = function(panel, cursorx, cursory, onscreen)
+        for i = 1, 4 do
+            panel.rose[i].active = false
+        end
+        panel.active = false
+    end
+    self.buttons.move.OnPress = function(panel, cursorx, cursory, onscreen)
+        local dirx = panel.x + panel.w / 2 - cursorx
+        local diry = panel.y + panel.h / 2 - cursory
+
+        local angle = (270 + math.deg(math.atan2(dirx, - diry))) % 360
+        local compass = math.floor(0.5 + angle / 90)
+
+        if compass == 0 then compass = 4 end
+        for i = 1, 4 do
+            panel.rose[i].active = compass == i
+        end
+
+        editor.toollist["move"].onUse(compass)
+        self.chunklabel:SetText(string.format("x: %d, y: %d", editor.chunk.col, editor.chunk.row))
+
+        panel.active = true
+    end
+    self.buttons.move.OnDraw = function(btn)
+        render.setColor(btn.border.color)
+        for i = 1, 4 do
+            render.setColor(btn.rose[i].active and btn.button.color3 or btn.button.color1)
+            render.drawPoly(btn.rose[i][1])
+        end
+        for i = 1, 4 do
+            render.setColor(btn.rose[i].active and btn.button.color4 or btn.button.color2)
+            render.drawPoly(btn.rose[i][2])
+        end
+    end
+
+    local size = self.buttons.move.h / 2
+    local centerx = self.buttons.move.x + self.buttons.move.w / 2
+    local centery = self.buttons.move.y + self.buttons.move.h / 2
+
+    self.buttons.move.rose = lotus.util.GenerateCompassRose(centerx, centery, size, 0)
+    for i = 1, 4 do
+        self.buttons.move.rose.active = false
+    end
+
+    self.chunklabel = lotus.CreateElement("label", editor.menu, self.context)
+    self.chunklabel:SetPos(self.buttons.move.x + 3, self.buttons.move.y + 3)
+    self.chunklabel:SetSize(128, 122)
+    self.chunklabel:SetText(string.format("x: %d, y: %d", 0, 0))
+--[[    self.chunk_mover = lotus.CreateElement("button", editor.menu, self.context)
+
+    self.chunk_mover:SetPos(self.infopanel.frame.x, self.infopanel.frame.y + self.infopanel.frame.h)
+    self.chunk_mover:SetSize(128, 122)
+
+    self.chunklabel = lotus.CreateElement("label", editor.menu, self.context)
+    self.chunklabel:SetPos(self.chunk_mover.x + 3, self.chunk_mover.y + 3)
+    self.chunklabel:SetSize(128, 122)
+    self.chunklabel:SetText(string.format("x: %d, y: %d", 0, 0))
+
+    self.chunk_mover.OnRelease = function(panel, cursorx, cursory, onscreen)
+        for i = 1, 4 do
+            panel.rose[i].active = false
+        end
+        panel.active = false
+    end
+    self.chunk_mover.OnPress = function(panel, cursorx, cursory, onscreen)
+        local dirx = panel.x + panel.w / 2 - cursorx
+        local diry = panel.y + panel.h / 2 - cursory
+
+        local angle = (270 + math.deg(math.atan2(dirx, - diry))) % 360
+        local compass = math.floor(0.5 + angle / 90)
+
+        if compass == 0 then compass = 4 end
+        for i = 1, 4 do
+            panel.rose[i].active = compass == i
+        end
+
+        editor.toollist["move"].onUse(compass)
+
+        self.chunklabel:SetText(string.format("x: %d, y: %d", editor.chunk.col, editor.chunk.row))
+
+        panel.active = true
+    end
+
+    self.chunk_mover:DefaultCallbacks()
+
+    local size = self.chunk_mover.h / 2
+    local centerx = self.chunk_mover.x + self.chunk_mover.w / 2
+    local centery = self.chunk_mover.y + self.chunk_mover.h / 2
+
+    self.chunk_mover.rose = lotus.util.GenerateCompassRose(centerx, centery, size, 0)
+    for i = 1, 4 do
+        self.chunk_mover.rose.active = false
+    end
+
+    self.chunk_mover.OnDraw = function(btn)
+        render.setColor(btn.border.color)
+        for i = 1, 4 do
+            render.setColor(btn.rose[i].active and btn.button.color3 or btn.button.color1)
+            render.drawPoly(btn.rose[i][1])
+        end
+        for i = 1, 4 do
+            render.setColor(btn.rose[i].active and btn.button.color4 or btn.button.color2)
+            render.drawPoly(btn.rose[i][2])
+        end
+    end]]
+end
 
 --[[
 

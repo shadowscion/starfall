@@ -14,11 +14,23 @@ local lotus = lotus
 ]]
 local tool = editor.createTool("reset")
 
-tool.onUse = function(grid)
-    if not grid then 
-        return 
-    end
-    grid:ClearGridContents()
+tool.onUse = function()
+    editor.placement.grid_center:ClearGridContents()
+    editor.placement.grid_right:ClearGridContents()
+    editor.placement.grid_left:ClearGridContents()
+    editor.resetChunkMap()
 end
 
-tool.info = "Clears active grid."
+tool.info = "DANGER ZONE - RESETS ENTIRE MAP."
+
+
+--[[
+
+]]
+local tool = editor.createTool("clear")
+
+tool.onUse = function()
+    editor.placement.grid_center:ClearGridContents()
+end
+
+tool.info = "Clears active chunk."

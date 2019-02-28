@@ -15,11 +15,38 @@ local lotus = lotus
 ]]
 local ghost = lotus.util.CreateClass("ghost", "element")
 
+function ghost:OnInitialize()
+    self:SetSize(16, 16)
+    self.color = Color(255, 255, 255, 200)
+    self.border = Color(255, 0, 0, 200)
+end
+
 function ghost:OnDraw()
-    if not self.draw then
-        return
+    if self.icon and self.drawicon then
+        render.setColor(self.color)
+        render.setMaterial(editor.tilesheet.texture)
+        render.drawTexturedRectUVFast(self.x, self.y, self.w, self.h, self.icon.u0, self.icon.v0, self.icon.u1, self.icon.v1, true)
+        render.setMaterial()
     end
-    render.drawRectOutline(self.x, self.y, self.w, self.h)
+    if self.drawborder then
+        render.setColor(self.border)
+        render.drawRectOutline(self.x, self.y, self.w, self.h)
+    end
+end
+
+function ghost:HideBorder()
+    if not self.drawborder then return end
+    self.drawborder = false
+    if self.InvalidateContext then
+        self:InvalidateContext()
+    end
+end
+function ghost:HideIcon()
+    if not self.drawicon then return end
+    self.drawicon = false
+    if self.InvalidateContext then
+        self:InvalidateContext()
+    end
 end
 
 function ghost:SetIcon(icon)
@@ -83,21 +110,28 @@ function meta:OnInitialize()
     --
     lotus.RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
         if not onscreen or not self.context or cursory > self.panel.h then
-            self.grid_center_ghost.draw = false
+            self.grid_center_ghost:HideIcon()
+            self.grid_center_ghost:HideBorder()
+            self.last_hover = nil
             return
         end
         local row, col, num, onGrid = self.grid_center:GetCursorCell(cursorx, cursory)
+        if not onGrid then
+            self.grid_center_ghost:HideIcon()
+            self.grid_center_ghost:HideBorder()
+        end
         if onGrid and self.last_hover ~= num then
             self.last_hover = num
-
-            self.grid_center_ghost.draw = true
-            self.grid_center_ghost:SetPos(self.grid_center.x + (col - 1) * 16, self.grid_center.y + (row - 1) * 16)
 
             if self.active and (editor.controlpanel.tool == "place" or editor.controlpanel.tool == "remove") then
                 editor.toollist[editor.controlpanel.tool].onUse(row - 1, col - 1, self.grid_center, editor.selection.current_selection)
             else
                 self.active = false
             end
+
+            self.grid_center_ghost:SetPos(self.grid_center.x + (col - 1) * 16, self.grid_center.y + (row - 1) * 16)
+            self.grid_center_ghost.drawicon = editor.controlpanel.tool == "place"
+            self.grid_center_ghost.drawborder = true
         end
     end)
     lotus.RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)

@@ -1,0 +1,79 @@
+--@name super_mario/level_editor/gui/tools/move
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+local lotus = lotus
+
+
+--[[
+
+]]
+local function resetGridToChunk(grid, roff, coff)
+    grid:ClearGridContents()
+    for y = 0, 15 do
+        local row = y + roff * 16
+        if not editor.chunk.grid[row] then
+            continue
+        end
+        for x = 0, 15 do
+            local col = x + coff * 16
+            if not editor.chunk.grid[row][col] then
+                continue
+            end
+            grid:SetGridContents(y, x, editor.chunk.grid[row][col])
+        end
+    end
+end
+
+
+--[[
+
+]]
+local tool = editor.createTool("move")
+
+tool.onUse = function(dir)
+    -- copy current center grid to chunk
+    local crow = editor.chunk.row * 16
+    local ccol = editor.chunk.col * 16
+
+    for y = 0, 15 do
+        editor.chunk.grid[y + crow] = editor.chunk.grid[y + crow] or {}
+        for x = 0, 15 do
+            editor.chunk.grid[y + crow][x + ccol] = nil
+        end
+    end
+    for y, row in pairs(editor.placement.grid_center.contents) do
+        editor.chunk.grid[crow + y] = editor.chunk.grid[crow + y] or {}
+        for x, cell in pairs(row) do
+            editor.chunk.grid[crow + y][ccol + x] = cell
+        end
+    end
+
+    -- move to new chunk
+    if dir == 1 then
+        editor.chunk.row = editor.chunk.row - 1
+    elseif dir == 2 then
+        editor.chunk.col = editor.chunk.col + 1
+    elseif dir == 3 then
+        editor.chunk.row = editor.chunk.row + 1
+    elseif dir == 4 then
+        editor.chunk.col = editor.chunk.col - 1
+    end
+
+    -- reset center
+    resetGridToChunk(editor.placement.grid_center, editor.chunk.row, editor.chunk.col)
+
+    -- reset left
+    resetGridToChunk(editor.placement.grid_left, editor.chunk.row, editor.chunk.col - 1)
+
+    -- reset right
+    resetGridToChunk(editor.placement.grid_right, editor.chunk.row, editor.chunk.col + 1)
+
+end
+
+tool.info = "Move to a different grid."
+

@@ -35,10 +35,10 @@ editor.tilesheet = require("super_mario/res/tiles.txt")
 ]]
 require("lib/lotus/init.txt")
 
+require("super_mario/level_editor/gui/elements/tile_grid.txt")
 require("super_mario/level_editor/gui/elements/placement.txt")
 require("super_mario/level_editor/gui/elements/selection.txt")
 require("super_mario/level_editor/gui/elements/controlpanel.txt")
-require("super_mario/level_editor/gui/elements/tile_grid.txt")
 
 
 --[[
@@ -51,8 +51,7 @@ editor.menu:AddContext("grid_inactive", editor.debug)
 editor.menu:AddContext("grid_active", editor.debug)
 editor.menu:AddContext("controlpanel", editor.debug)
 editor.menu:AddContext("menu", editor.debug)
-editor.menu:AddContext("overlay", true)
-
+editor.menu:AddContext("overlay", editor.debug)
 
 
 --[[
@@ -60,8 +59,10 @@ editor.menu:AddContext("overlay", true)
 ]]
 timer.create("invalidate", 0.05, 0, function()
     if editor.tilesheet.texture.isLoaded then
-        editor.menu:InvalidateContext()
         timer.remove("invalidate")
+        timer.simple(1, function()
+            editor.menu:InvalidateContext()
+        end)
     end
 end)
 
@@ -69,9 +70,13 @@ end)
 --[[
 
 ]]
+editor.resetChunkMap()
+
 editor.placement = lotus.CreateElement("placement", editor.menu, "menu")
 editor.selection = lotus.CreateElement("selection", editor.menu, "menu")
 editor.controlpanel = lotus.CreateElement("controlpanel", editor.menu, "controlpanel")
+
+editor.menu:InvalidateContext()
 
 for _, context in pairs(editor.menu.contexts) do
     for _, element in pairs(context.elements) do

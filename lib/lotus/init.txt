@@ -12,6 +12,7 @@
     EXPANDABLE GUI/MENU LIBRARY
 ]]
 lotus = {
+    filter = nil,
     menus = {},
     callbacks = {
         ["inputPressed"] = {},
@@ -135,6 +136,11 @@ hook.add("think", "think", function()
 end)
 
 hook.add("render", "render", function()
+    if lotus.filter then
+        render.setFilterMin(lotus.filter.min or 0)
+        render.setFilterMag(lotus.filter.mag or 1)
+    end
+
     local x, y = render.cursorPos()
 
     x = math.floor(x or -1)

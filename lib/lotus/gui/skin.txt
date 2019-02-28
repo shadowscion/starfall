@@ -61,7 +61,7 @@ lotus.skins["orange"] = {
         color = Color(228, 241, 254),
     },
     frame = {
-        color = Color(197, 211, 226),
+        color = Color(255, 250, 230),
     },
     scrollbar = {
         color = Color(152, 166, 181),

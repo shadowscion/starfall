@@ -67,7 +67,7 @@ function meta:Click(cursorx, cursory, onscreen)
         return false
     end
     if lotus.util.PointInRectangle(cursorx, cursory, self.button.x, self.button.y, self.button.w, self.button.h) then
-        self:OnPress(timer.curtime())
+        self:OnPress(cursorx, cursory, onscreen)
         self:InvalidateContext()
         return true
     end
@@ -82,7 +82,7 @@ function meta:UnClick(cursorx, cursory, onscreen)
         return false
     end
     if self.active then
-        self:OnRelease(timer.curtime())
+        self:OnRelease(cursorx, cursory, onscreen)
         self:InvalidateContext()
         return true
     end
@@ -92,11 +92,11 @@ end
 --[[
 
 ]]
-function meta:OnPress(timePressed)
-    self.active = timePressed
+function meta:OnPress(cursorx, cursory, onscreen)
+    self.active = true
 end
 
-function meta:OnRelease(timeReleased)
+function meta:OnRelease(cursorx, cursory, onscreen)
     self.active = false
 end
 
@@ -109,7 +109,7 @@ function meta:DefaultCallbacks()
         self:Click(cursorx, cursory, onscreen)
     end)
     lotus.RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
-        self:UnClick()
+        self:UnClick(cursorx, cursory, onscreen)
     end)
 end
 

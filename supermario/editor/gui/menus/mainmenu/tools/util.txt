@@ -1,0 +1,129 @@
+--@name supermario/editor/gui/menus/mainmenu/tools/util
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+local gui = editor.gui
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("view")
+
+tool.info = "Open the map viewer."
+tool.onUse = function()
+    editor.syncMap()
+    editor.mapviewer.viewer:UpdateMap(0, 0, true)
+
+    editor.mainmenu.menu:SetNodraw(true)
+    editor.mapviewer.menu:SetNodraw(false)
+end
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("reset")
+
+tool.info = "DANGER ZONE - Resets the map."
+tool.onUse = function()
+    editor.mainmenu.placement.grid.contents = {}
+    editor.mainmenu.placement.grid_left.contents = {}
+    editor.mainmenu.placement.grid_right.contents = {}
+
+    editor.mainmenu.placement.grid:UpdateRT()
+    editor.mainmenu.placement.grid_right:UpdateRT()
+
+    editor.resetMap()
+end
+
+
+--[[
+
+]]
+local function date()
+    local dat = os.date()
+    dat = string.replace(dat, " ", "_")
+    dat = string.replace(dat, ":", "_")
+    return dat
+end
+
+local function fileWrite(name, data)
+    if player() ~= owner() then return end
+    file.write(name, data)
+end
+
+local function fileCreateDir(dir)
+    if player() ~= owner() then return end
+    file.createDir(dir)
+end
+
+local filedir = "super_mario/level_editor/"
+local subdirs = {
+    ["saves"] = function(name) return
+        string.lower(string.format("%s%s/%s_%s.txt", filedir, "saves", name or "save", name and "" or date()))
+    end,
+    ["backups"] = function(name) return string.lower(string.format("%s%s/%s_%s.txt", filedir, "backups", "backup", date())) end,
+}
+
+for subdir, _ in pairs(subdirs) do
+    fileCreateDir(filedir .. subdir)
+end
+
+function editor.export()
+    editor.syncMap()
+
+    local filedata = ""
+    for chunk_row = editor.map.row_max, editor.map.row_min do
+        for chunk_col = editor.map.col_min, editor.map.col_max do
+            filedata = filedata .. string.format("skybox 255 255 255\nchunk %d %d\n", chunk_row, chunk_col)
+            for y = 0, 15 do
+                local chunk = ""
+                for x = 0, 15 do
+                    local real_y = y + chunk_row * 16
+                    local real_x = x + chunk_col * 16
+
+                    local info = 0
+                    if editor.map.grid[real_y] and editor.map.grid[real_y][real_x] then
+                        info = editor.map.grid[real_y][real_x] or 0
+                    end
+                    chunk = chunk .. info .. " "
+                end
+                filedata = filedata .. string.trim(chunk) .. "\n"
+            end
+
+        end
+    end
+
+    return filedata
+end
+
+local tool = editor.mainmenu.registerTool("save")
+
+tool.info = "Save the map to a file."
+tool.onUse = function(dir)
+    if player() ~= owner() then return end
+    if not subdirs[dir] then
+        return
+    end
+
+    local filename = subdirs[dir]()
+    local filedata = editor.export()
+
+    fileWrite(filename, filedata)
+end
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("load")
+
+tool.info = "Load a map from a file."
+tool.onUse = function()
+
+end

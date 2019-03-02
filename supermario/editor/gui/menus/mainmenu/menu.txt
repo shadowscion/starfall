@@ -1,0 +1,63 @@
+--@name supermario/editor/gui/menus/mainmenu/menu
+--@author shadowscion
+--@client
+--@includedir /supermario/editor/gui/menus/mainmenu/elements/
+--@includedir /supermario/editor/gui/menus/mainmenu/tools/
+
+--[[
+
+]]
+local editor = editor
+
+editor.mainmenu = {
+    menu = editor.gui.createMenu(),
+    tools = {},
+}
+
+function editor.mainmenu.registerTool(name)
+    editor.mainmenu.tools[name] = {
+        info = "No information.",
+        onUse = function() end,
+    }
+    return editor.mainmenu.tools[name]
+end
+
+function editor.mainmenu.getToolInfo(name)
+    if not editor.mainmenu.tools[name] then
+        return "INVALID TOOL"
+    end
+    return editor.mainmenu.tools[name].info
+end
+
+function editor.mainmenu.setActiveTool(name)
+    if not editor.mainmenu.tools[name] then
+        editor.mainmenu.activetool = nil
+        return
+    end
+    editor.mainmenu.activetool = name
+end
+
+function editor.mainmenu.getSelection()
+    return editor.mainmenu.selection.selection and editor.mainmenu.selection.selection.dict or nil
+end
+
+
+--[[
+
+]]
+requiredir("/supermario/editor/gui/menus/mainmenu/elements/")
+requiredir("/supermario/editor/gui/menus/mainmenu/tools/")
+
+
+--[[
+
+]]
+editor.mainmenu.menu:AddRT("window.placement")
+editor.mainmenu.menu:AddRT("window.placement_side")
+editor.mainmenu.menu:AddRT("window.selection")
+editor.mainmenu.menu:AddRT("window.controlpanel")
+editor.mainmenu.menu:AddRT("overlay")
+
+editor.mainmenu.placement = editor.gui.createElement("placement", editor.mainmenu.menu, "window.placement")
+editor.mainmenu.selection = editor.gui.createElement("selection", editor.mainmenu.menu, "window.selection")
+editor.mainmenu.controlpanel = editor.gui.createElement("controlpanel", editor.mainmenu.menu, "window.controlpanel")

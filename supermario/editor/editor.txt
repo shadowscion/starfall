@@ -1,0 +1,55 @@
+--@name supermario/editor/editor
+--@author shadowscion
+--@client
+--@include lib/orchid/init.txt
+--@include supermario/editor/res/tiles.txt
+--@include supermario/editor/gui/menus/mainmenu/menu.txt
+--@include supermario/editor/gui/menus/mapviewer/menu.txt
+
+
+--[[
+
+]]
+editor = {
+    gui = require("lib/orchid/init.txt"),
+    tiles = require("supermario/editor/res/tiles.txt"),
+}
+
+require("supermario/editor/gui/menus/mainmenu/menu.txt")
+require("supermario/editor/gui/menus/mapviewer/menu.txt")
+
+local skin = {
+    header = {
+        color1 = Color(186, 220, 88),
+        color2 = Color(106, 176, 76),
+    },
+    title = {
+        color = Color(246, 241, 221),
+    },
+    frame = {
+        color = Color(246, 241, 221),
+    },
+    scrollbar = {
+        color = Color(245, 231, 176),
+    },
+    handle = {
+        color2 = Color(106, 176, 76),
+        color1 = Color(186, 220, 88),
+    },
+    button = {
+        color1 = Color(186, 220, 88),
+        color2 = Color(106, 176, 76),
+        color3 = Color(242, 232, 184),
+        color4 = Color(248, 199, 151),
+    },
+}
+
+editor.mainmenu.menu:ApplySkin(skin)
+editor.mapviewer.menu:ApplySkin(skin)
+
+timer.create("redraw", 15/1000, 0, function()
+    if editor.tiles.texture.isLoaded then
+        editor.mainmenu.menu:Update()
+        timer.remove("redraw")
+    end
+end)

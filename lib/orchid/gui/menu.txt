@@ -1,0 +1,526 @@
+--@name lib/orchid/gui/menu
+--@author shadowscion
+--@client
+--@include lib/orchid/gui/element.txt
+
+
+--[[
+
+]]
+local menu = {}
+local menu_mt = { __index = menu }
+
+local fonts = {
+    default_font_large = render.createFont("Courier New", 18, 100, false, false, true, false, false),
+    default_font_small = render.createFont("Courier New", 15, 10, false, false, true, false, false),
+    default_font_label = render.createFont("Arial", 12, 10),
+}
+
+
+--[[
+    A menu contains a list of render targets, to which
+    elements are added.
+]]
+function menu:Create()
+    local m = setmetatable({ type = "menu", fonts = fonts }, menu_mt)
+    m:Initialize()
+    return m
+end
+
+function menu:Initialize()
+    self.debug = false
+    self.debugout = ""
+    self.nodraw = false
+    self.x = 0
+    self.y = 0
+    self.w = 1024
+    self.h = 1024
+    self.renderTargets = {}
+    self.renderOrders = {}
+    self.callbacks = {
+        ["inputPressed"] = {},
+        ["inputReleased"] = {},
+        ["cursorChanged"] = {},
+        ["think"] = {},
+    }
+end
+
+
+--[[
+
+]]
+function menu:ApplySkin(skin)
+    for _, renderTarget in pairs(self.renderTargets) do
+        for _, element in pairs(renderTarget.elements) do
+            element:ApplySkin(skin)
+        end
+    end
+end
+
+
+--[[
+    Callbacks are per-menu.
+]]
+function menu:RegisterCallback(event, key, callback, renderTarget)
+    if not self.renderTargets[renderTarget] or not self.callbacks[event] then
+        return
+    end
+    local func = { renderTarget = renderTarget, callback = callback }
+    if key then
+        self.callbacks[event][key] = self.callbacks[event][key] or {}
+        table.insert(self.callbacks[event][key], func)
+    else
+        table.insert(self.callbacks[event], func)
+    end
+end
+
+
+--[[
+    Each render target is redrawn, when
+    forced, and then rendered to a screen.
+]]
+function menu:AddRT(renderTarget)
+    if self.renderTargets[renderTarget] then
+        return
+    end
+
+    self.renderTargets[renderTarget] = {
+        rtname = renderTarget .. math.random(0, 9999),
+        elements = {},
+        redraw = true,
+        nodraw = false,
+        clearDepth = true,
+        clearColor = Color(0, 0, 0, 0),
+        renderColor = Color(255, 255, 255),
+    }
+
+    render.createRenderTarget(self.renderTargets[renderTarget].rtname)
+
+    self.renderTargets[renderTarget].order = table.insert(self.renderOrders, renderTarget)
+end
+
+
+--[[
+    Changes render target clear color.
+]]
+function menu:ClearRT(renderTarget, color)
+    if not self.renderTargets[renderTarget] then
+        return
+    end
+    self.renderTargets[renderTarget].clearColor = color
+    self:UpdateRT(renderTarget)
+end
+
+
+--[[
+    Invalidates the render target. Use when something
+    needs to be updated on the screen.
+]]
+function menu:UpdateRT(renderTarget)
+    if not self.renderTargets[renderTarget] then
+        return
+    end
+    self.renderTargets[renderTarget].redraw = true
+end
+
+
+--[[
+    Invalidates every render target.
+]]
+function menu:Update()
+    for i, renderTarget in ipairs(self.renderOrders) do
+        self:UpdateRT(renderTarget)
+    end
+end
+
+
+--[[
+    If true, menu or specific rt draws are skipped.
+]]
+function menu:SetNodraw(bool, renderTarget)
+    if not self.renderTargets[renderTarget] then
+        self.nodraw = bool
+        return
+    end
+    self.renderTargets[renderTarget].nodraw = bool
+end
+
+
+--[[
+    Elements are added to render targets.
+]]
+function menu:AddElement(renderTarget, element)
+    if not self.renderTargets[renderTarget] then
+        return
+    end
+
+    element.menu = self
+    element.renderTarget = renderTarget
+
+    element:Initialize()
+
+    table.insert(self.renderTargets[renderTarget].elements, element)
+end
+
+
+--[[
+    Blur filter.
+]]
+local overrideAlpha = nil
+function render.setColor(color)
+    render.setRGBA(color.r, color.g, color.b, overrideAlpha or color.a)
+end
+
+local blurm = Matrix()
+local blurv = Vector()
+local blura = Angle()
+
+local function lerp(v0, v1, t)
+    return (1 - t) * v0 + t * v1
+end
+
+local blurFunc = {
+    ["linear"] = function(element)
+        local bx = element.blur.x or 5
+        local by = element.blur.y or 5
+        local bp = element.blur.passes or 5
+
+        blura.y = 0
+        blurm:setAngles(blura)
+
+        for i = 0, bp do
+            blurv.x = lerp(0, bx, i / bp)
+            blurv.y = lerp(0, by, i / bp)
+            blurm:setTranslation(blurv)
+
+            render.pushMatrix(blurm)
+            element:Draw()
+            render.popMatrix()
+        end
+    end,
+--[[    ["angular"] = function(element)
+        local bp = element.blur.passes or 5
+
+        blurv.x = 0
+        blurv.y = 0
+        blurm:setTranslation(blurv)
+
+        for i = 0, bp do
+            blura.y = math.random(-5, 5)
+            blurm:setAngles(blura)
+
+            render.pushMatrix(blurm)
+            element:Draw()
+            render.popMatrix()
+        end
+    end,]]
+    ["radial"] = function(element)
+        local bx = element.blur.x or 5
+        local by = element.blur.y or 5
+        local bp = element.blur.passes or 5
+
+        blura.y = 0
+        blurm:setAngles(blura)
+
+        for i = 0, bp do
+            local t = math.pi * 2 * i / bp
+
+            blurv.x = math.cos(t) * bx
+            blurv.y = math.sin(t) * by
+            blurm:setTranslation(blurv)
+
+            render.pushMatrix(blurm)
+            element:Draw()
+            render.popMatrix()
+        end
+    end
+}
+
+local function drawBlur(element)
+    if not blurFunc[element.blur.type] then
+        element:Draw()
+        overrideAlpha = nil
+        return
+    end
+    if element.blur.scissor then
+        render.enableScissorRect(element.x, element.y, element.x + element.w, element.y + element.h)
+    end
+    overrideAlpha = element.blur.alpha or 50
+    blurFunc[element.blur.type](element)
+    overrideAlpha = nil
+    if element.blur.scissor then
+        render.disableScissorRect()
+    end
+end
+
+
+--[[
+    Each element of each render target table is drawn when needed.
+]]
+function menu:DrawRT(renderTarget)
+    if not self.renderTargets[renderTarget] then
+        return
+    end
+    if not self.renderTargets[renderTarget].redraw then
+        return
+    end
+
+    render.selectRenderTarget(self.renderTargets[renderTarget].rtname)
+    render.clear(self.renderTargets[renderTarget].clearColor, self.renderTargets[renderTarget].clearDepth)
+
+    for i, element in ipairs(self.renderTargets[renderTarget].elements) do
+        if element.nodraw then
+            continue
+        end
+        if element.blur then
+            drawBlur(element)
+        else
+            element:Draw()
+        end
+    end
+    
+    if self.debug then 
+        printMessage(2, string.format("ORCHID DEBUGGER:\n\tRT <%s> was redrawn.\n", renderTarget)) 
+    end
+
+    render.selectRenderTarget()
+
+    self.renderTargets[renderTarget].redraw = false
+end
+
+function menu:DrawAllRT()
+    for i, renderTarget in ipairs(self.renderOrders) do
+        self:DrawRT(renderTarget)
+    end
+end
+
+
+--[[
+    Each element of each render target table is rendered.
+]]
+function menu:RenderRT(renderTarget)
+    if not self.renderTargets[renderTarget] then
+        return
+    end
+    if self.renderTargets[renderTarget].nodraw or self.renderTargets[renderTarget].redraw then
+        return
+    end
+
+    render.setRenderTargetTexture(self.renderTargets[renderTarget].rtname)
+    render.setColor(self.renderTargets[renderTarget].renderColor)
+    render.drawTexturedRect(self.x, self.y, self.w, self.h)
+    render.setRenderTargetTexture()
+end
+
+function menu:RenderAllRT()
+    for i, renderTarget in ipairs(self.renderOrders) do
+        self:RenderRT(renderTarget)
+    end
+end
+
+
+--[[
+    The applied render target stack.
+]]
+function menu:Render()
+    if self.nodraw then
+        return
+    end
+
+    self:DrawAllRT()
+
+    overrideAlpha = nil
+
+    self:RenderAllRT()
+end
+
+
+--[[
+
+]]
+local element = require("lib/orchid/gui/element.txt")
+local menuList = {}
+
+local function createMenu(...)
+    local m = menu:Create()
+    m.id = table.insert(menuList, m)
+    for _, context in ipairs({...}) do
+        m:AddRT(context)
+    end
+    return m
+end
+
+
+--[[
+
+]]
+local cursor = {
+    x = -1,
+    y = -1,
+    onscreen = false,
+    changed = false,
+    nodraw = false,
+    shapes = {
+        {
+            { x = 2, y = 19 },
+            { x = 2, y = 26 },
+            { x = -2, y = 26 },
+            { x = -2, y = 19 },
+        },
+        {
+            { x = 0, y = -2 },
+            { x = 8, y = 19 },
+            { x = -8, y = 19 },
+        },
+        {
+            { x = 1, y = 18 },
+            { x = 1, y = 25 },
+            { x = -1, y = 25 },
+            { x = -1, y = 18 },
+        },
+        {
+            { x = 0, y = 0 },
+            { x = 6, y = 18 },
+            { x = -6, y = 18 },
+        }
+    },
+    color1 = Color(0, 0, 0),
+    color2 = Color(255, 255, 255),
+    matrix = Matrix(),
+    vector = Vector(),
+    angle = Angle(0, -22.5, 0),
+    scale = Vector(0.5, 0.5, 0),
+    Draw = function(self)
+        if self.nodraw then
+            return
+        end
+        render.pushMatrix(self.matrix)
+        render.setColor(self.color1)
+        for i = 1, 2 do
+            render.drawPoly(self.shapes[i])
+        end
+        render.setColor(self.color2)
+        for i = 3, 4 do
+            render.drawPoly(self.shapes[i])
+        end
+        render.popMatrix()
+    end
+}
+
+cursor.matrix:setScale(cursor.scale)
+cursor.matrix:setAngles(cursor.angle)
+
+local cull = false
+timer.create("cull", 2.5, 0, function()
+    cull = eyePos():getDistanceSqr(chip():getPos()) > 250000
+end)
+
+hook.add("inputPressed", "orchid.inputPressed", function(key)
+    if cull then
+        return
+    end
+    for _, m in pairs(menuList) do
+        if m.nodraw or not m.callbacks["inputPressed"][key] then
+            continue
+        end
+        for _, func in pairs(m.callbacks["inputPressed"][key]) do
+            if m.renderTargets[func.renderTarget].nodraw then
+                continue
+            end
+            func.callback(cursor.x, cursor.y, cursor.onscreen)
+        end
+    end
+end)
+
+hook.add("inputReleased", "orchid.inputReleased", function(key)
+    if cull then
+        return
+    end
+    for _, m in pairs(menuList) do
+        if m.nodraw or not m.callbacks["inputReleased"][key] then
+            continue
+        end
+        for _, func in pairs(m.callbacks["inputReleased"][key]) do
+            if m.renderTargets[func.renderTarget].nodraw then
+                continue
+            end
+            func.callback(cursor.x, cursor.y, cursor.onscreen)
+        end
+    end
+end)
+
+local ct = timer.curtime()
+local dt = 0
+
+hook.add("render", "orchid.render", function()
+    dt = timer.curtime() - ct
+    ct = timer.curtime()
+    
+    if cull then
+        return
+    end
+
+    for _, m in pairs(menuList) do
+        if m.nodraw or not m.callbacks["think"] then
+            continue
+        end
+        for _, func in pairs(m.callbacks["think"]) do
+            if m.renderTargets[func.renderTarget].nodraw then
+                continue
+            end
+            func.callback(cursor.x, cursor.y, cursor.onscreen, dt, ct)
+        end
+    end
+    
+    local x, y = render.cursorPos()
+
+    x = math.floor(x or -1)
+    y = math.floor(y or -1)
+
+    if cursor.changed then
+        cursor.changed = false
+    end
+    if cursor.x ~= x or cursor.y ~= y then
+        cursor.x = x
+        cursor.y = y
+        cursor.changed = true
+        cursor.onscreen = x ~= -1 and y ~= -1
+
+        for _, m in pairs(menuList) do
+            if m.nodraw then
+                continue
+            end
+            for _, func in pairs(m.callbacks["cursorChanged"]) do
+                if m.renderTargets[func.renderTarget].nodraw then
+                    continue
+                end
+                func.callback(cursor.x, cursor.y, cursor.onscreen)
+            end
+        end
+
+        if cursor.changed then
+            cursor.vector.x = x
+            cursor.vector.y = y
+            cursor.matrix:setTranslation(cursor.vector)
+        end
+    end
+
+    for _, m in pairs(menuList) do
+        m:Render()
+    end
+
+    cursor:Draw()
+end)
+
+
+--[[
+
+]]
+return {
+    cursor = cursor,
+    createMenu = createMenu,
+    menuList = menuList,
+    createElement = element.createElement,
+    registerElement = element.registerElement,
+    elementList = element.elements,
+}

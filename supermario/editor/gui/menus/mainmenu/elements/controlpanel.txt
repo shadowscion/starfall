@@ -1,0 +1,277 @@
+--@name supermario/editor/gui/menus/mainmenu/elements/controlpanel
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local editor = editor
+local gui = editor.gui
+
+
+--[[
+
+]]
+local element = gui.registerElement("controlpanel", "element")
+
+function element:Initialize()
+    self.panel = gui.createElement("frame", self.menu, self.renderTarget)
+    self.panel:SetPos(256, 256)
+    self.panel:SetSize(256, 256)
+    self.panel:SetTitle("CONTROL PANEL")
+
+    self.toolpanel = gui.createElement("frame", self.menu, self.renderTarget)
+    self.toolpanel:SetPos(self.panel.frame.x, self.panel.frame.y)
+    self.toolpanel:SetSize(128, 124)
+    self.toolpanel:SetTitle("TOOLS")
+
+    self.infopanel = gui.createElement("frame", self.menu, self.renderTarget)
+    self.infopanel:SetPos(self.panel.frame.x + 128, self.panel.frame.y)
+    self.infopanel:SetSize(128, 124)
+    self.infopanel:SetTitle("INFO")
+
+    self.infolabel = gui.createElement("label", self.menu, self.renderTarget)
+    self.infolabel:SetPos(self.infopanel.frame.x + 3, self.infopanel.frame.y + 3)
+    self.infolabel:SetSize(self.infopanel.frame.w - 6, self.infopanel.frame.h - 6)
+    self.infolabel:SetText("Tool information.")
+
+    self.buttonlist = {}
+
+    self:CreateToolButtons()
+    self:CreateMapMover()
+end
+
+function element:CreateToolButtons()
+    -- name, isToolToggle
+    local list = {
+        { { "Place",  true }, { "View",  false } },
+        { { "Remove", true }, { "Reset", false } },
+        { { "Fill",   true }, { "Save",  false } },
+        { { "Clear",  true }, { "Load",  false } },
+    }
+
+
+    for y, row in ipairs(list) do
+        for x, col in ipairs(row) do
+            local button = gui.createElement("button", self.menu, self.renderTarget)
+            button:SetPos(self.toolpanel.frame.x + 3 + (x - 1) * 62, self.toolpanel.frame.y + 3 + (y - 1) * 26)
+            button:SetSize(60, 24)
+            button:SetText(col[1])
+            button:RegisterDefaultCallbacks()
+            button.tool_ref = string.lower(col[1])
+
+            -- these buttons disable others when pressed
+            if col[2] then
+                button.isToolToggle = true
+                button.OnPress = function(btn, cursorx, cursory, onscreen)
+                    if not btn.button_active then
+                        editor.mainmenu.setActiveTool(btn.tool_ref)
+                        self.infolabel:SetText(editor.mainmenu.getToolInfo(editor.mainmenu.activetool))
+
+                        for _, otherBtn in pairs(self.buttonlist) do
+                            if not otherBtn.isToolToggle then
+                                continue
+                            end
+                            otherBtn.button_active = false
+                            otherBtn.button_override = false
+                        end
+
+                        btn.button_active = true
+                        btn.button_override = true
+
+                        btn:UpdateRT()
+                    end
+                end
+                button.OnRelease = function(btn, cursorx, cursory, onscreen)
+                end
+            end
+
+            self.buttonlist[button.tool_ref] = button
+        end
+    end
+
+    self.buttonlist["save"].OnPress = function(btn, cursorx, cursory, onscreen)
+        editor.mainmenu.tools["save"].onUse("saves")
+        btn.button_active = true
+        btn:UpdateRT()
+    end
+    self.buttonlist["save"].OnRelease = function(btn)
+        btn.button_active = false
+        btn:UpdateRT()
+    end
+
+    self.buttonlist["view"].OnPress = function(btn, cursorx, cursory, onscreen)
+        editor.mainmenu.tools["view"].onUse()
+    end
+    self.buttonlist["reset"].OnPress = function(btn, cursorx, cursory, onscreen)
+        if not btn.stage then
+            btn:SetText("Really?")
+            btn.stage = 1
+
+            timer.simple(1, function()
+                if btn.stage == 1 then
+                    btn:SetText("Reset")
+                    btn.stage = nil
+                end
+            end)
+
+            return
+        end
+        if btn.stage == 1 then
+            btn:SetText("Poof!")
+            btn.stage = 2
+            btn.button_active = true
+
+            editor.mainmenu.tools["reset"].onUse()
+
+            timer.simple(1, function()
+                btn:SetText("Reset")
+                btn.button_active = false
+                btn.stage = nil
+            end)
+        end
+    end
+    self.buttonlist["reset"].OnRelease = function() end
+
+    self:RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
+        if not onscreen then
+            return
+        end
+
+        if not self.toolpanel:Contains(cursorx, cursory) then
+            if self.button_hovered then
+                self.infolabel:SetText(editor.mainmenu.getToolInfo(editor.mainmenu.activetool))
+                self.button_hovered = nil
+            end
+            return
+        end
+
+        for i, button in pairs(self.buttonlist) do
+            if self.button_hovered == button then
+                continue
+            end
+
+            if button:Contains(cursorx, cursory) then
+                self.infolabel:SetText(editor.mainmenu.getToolInfo(button.tool_ref))
+                self.button_hovered = button
+                self:UpdateRT()
+                break
+            end
+        end
+    end)
+
+    self.buttonlist["place"]:OnPress()
+end
+
+
+--[[
+    compass rose
+]]
+local arrow = {
+    -- right side
+    {
+        Vector(0.0, 0.000000 - 1, 0),
+        Vector(0.152344, 0.847656 - 1, 0),
+        Vector(0.0, 1.000000 - 1, 0),
+    },
+    -- left side
+    {
+        Vector(-0.0, 0.000000 - 1, 0),
+        Vector(-0.0, 1.000000 - 1, 0),
+        Vector(-0.152344, 0.847656 - 1, 0),
+    },
+}
+
+local function GetArrow(x, y, ang, size, yoff)
+    local shapes = { {}, {}, {} }
+
+    for i, vert in ipairs(arrow[1]) do
+        local v = Vector(vert.x, vert.y, 0) * size
+        v.y = v.y - yoff
+        v:rotate(Angle(0, ang, 0))
+        shapes[1][i] = {
+            x = v.x + x,
+            y = v.y + y,
+        }
+    end
+    for i, vert in ipairs(arrow[2]) do
+        local v = Vector(vert.x, vert.y, 0) * size
+        v.y = v.y - yoff
+        v:rotate(Angle(0, ang, 0))
+        shapes[2][i] = {
+            x = v.x + x,
+            y = v.y + y,
+        }
+    end
+
+    return shapes
+end
+
+local function GenerateCompassRose(x, y, size, yoff)
+    local rose = {}
+    for i = 0, 3 do
+        table.insert(rose, GetArrow(x, y, i * 90, size, yoff))
+    end
+    return rose
+end
+
+
+function element:CreateMapMover()
+    self.mapmover = gui.createElement("button", self.menu, self.renderTarget)
+    self.mapmover:SetPos(self.infopanel.frame.x, self.infopanel.frame.y + self.infopanel.frame.h)
+    self.mapmover:SetSize(128, self.panel.frame.h - self.infopanel.h)
+
+    local size = self.mapmover.h / 2
+    local xoff = self.mapmover.x + self.mapmover.w / 2
+    local yoff = self.mapmover.y + self.mapmover.h / 2
+
+    self.mapmover.shapes = GenerateCompassRose(xoff, yoff, size, 0)
+
+    self.mapmover.Draw = function(btn)
+        for i = 1, 4 do
+            render.setColor(btn.shapes[i].active and btn.button.color2 or btn.button.color4)
+            render.drawPoly(btn.shapes[i][1])
+
+            render.setColor(btn.shapes[i].active and btn.button.color1 or btn.button.color3)
+            render.drawPoly(btn.shapes[i][2])
+        end
+    end
+
+    self.mapmover:RegisterDefaultCallbacks()
+
+    self.mapmover.OnRelease = function(btn, cursorx, cursory, onscreen)
+        if not btn.active then
+            return
+        end
+        for i = 1, 4 do
+            btn.shapes[i].active = false
+        end
+        btn.active = false
+        btn:UpdateRT()
+    end
+
+    self.mapmover.OnPress = function(btn, cursorx, cursory, onscreen)
+        if btn.active then
+            return
+        end
+
+        local dirx = btn.x + btn.w / 2 - cursorx
+        local diry = btn.y + btn.h / 2 - cursory
+        local angle = (270 + math.deg(math.atan2(dirx, - diry))) % 360
+        local compass = math.floor(0.5 + angle / 90)
+
+        if compass == 0 then compass = 4 end
+        for i = 1, 4 do
+            btn.shapes[i].active = compass == i
+        end
+
+        editor.mainmenu.tools["mapmover"].onUse(compass)
+        --editor.toollist["move"].onUse(compass)
+        --self.chunklabel:SetText(string.format("x: %d, y: %d", editor.chunk.col, editor.chunk.row))
+
+        btn.active = true
+        btn:UpdateRT()
+    end
+end
+

@@ -1,0 +1,323 @@
+--@name supermario/editor/gui/menus/mainmenu/elements/selection
+--@author shadowscion
+--@client
+--@include lib/binpack.txt
+
+
+--[[
+
+]]
+local editor = editor
+local gui = editor.gui
+
+local binpack = require("lib/binpack.txt")
+
+local function GetSprite(dict)
+    return editor.tiles.dict[dict]
+end
+
+
+--[[
+    Sorted Iteration
+]]
+local function keyValuePairs(state)
+    state.Index = state.Index + 1
+
+    local keyValue = state.KeyValues[state.Index]
+    if not keyValue then return end
+
+    return keyValue.key, keyValue.val
+end
+
+local function toKeyValues(tbl)
+    local result = {}
+    for k, v in pairs(tbl) do
+        table.insert(result, { key = k, val = v } )
+    end
+    return result
+end
+
+local function sortedPairs(pTable, Desc)
+    local sortedTbl = toKeyValues(pTable)
+
+    if Desc then
+        table.sort(sortedTbl, function(a, b) return a.key > b.key end)
+    else
+        table.sort(sortedTbl, function(a, b) return a.key < b.key end)
+    end
+
+    return keyValuePairs, { Index = 0, KeyValues = sortedTbl }
+end
+
+
+--[[
+
+]]
+local element = gui.registerElement("selection", "element")
+
+function element:Initialize()
+    self.panel = gui.createElement("scrollframe", self.menu, self.renderTarget)
+    self.panel:SetPos(0, 256)
+    self.panel:SetSize(256, 256)
+    self.panel:SetTitle("TILE SELECTION")
+
+    self.panel.OnScroll = function(panel)
+        self.iconlist.minrow = math.clamp(math.floor(((panel.frame.y - panel.contents.scroll) * self.iconlist.numrows) / panel.contents.length) + 1, 1, self.iconlist.numrows)
+        self.iconlist.maxrow = math.clamp(math.floor(panel.frame.h / self.iconlist.size_large) + self.iconlist.minrow, 1, self.iconlist.numrows)
+    end
+
+    self.panel.contents.Draw = function(contents)
+        self:DrawIconlistHeaders(contents.scroll)
+        if not editor.tiles.texture.isLoaded then
+            return
+        end
+        self:DrawIconList(contents.scroll)
+        self:DrawIconSelected(contents.scroll)
+    end
+
+    self.iconlist = {}
+    self.iconlist.color_background = Color(114, 180, 255)
+    self.iconlist.color_selected = Color(255, 0, 0)
+
+    self:BuildIconList()
+
+    self:RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen or cursory < self.panel.y or cursorx > self.panel.x + self.panel.w then
+            return
+        end
+        local row, col, num, ongrid = self:GetCursorCell(cursorx, cursory)
+        if ongrid and self.iconlist.icons[row][col] then
+            self:SetSelection(row, col)
+        end
+    end)
+end
+
+
+--[[
+    returns row, col, index, and ongrid
+]]
+function element:GetCursorCell(cursorx, cursory)
+    local row = math.ceil(((cursory - self.panel.contents.scroll) / self.panel.contents.length) * self.iconlist.numrows)
+    local col = math.ceil(((cursorx - self.iconlist.xoff) / (self.iconlist.numcols * self.iconlist.size_large)) * self.iconlist.numcols)
+    local num = (row - 1) * self.iconlist.numcols + col
+    return row, col, num, row >= self.iconlist.minrow and row <= self.iconlist.maxrow and col > 0 and col <= self.iconlist.numcols
+end
+
+
+--[[
+
+]]
+function element:SetSelection(row, col)
+    if not self.iconlist.icons[row] or not self.iconlist.icons[row][col] then
+        return
+    end
+    self.selection = {
+        dict = self.iconlist.icons[row][col].dict,
+        row = row,
+        col = col,
+        scroll = self.panel.contents.scroll,
+        scrolly = self.panel.handle.y,
+    }
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:GetSelection()
+    return self.selection
+end
+
+
+--[[
+
+]]
+function element:IsSelected(row, col)
+    if self.selection then
+        return self.selection.row == row and self.selection.col == col
+    end
+    return false
+end
+
+
+--[[
+
+]]
+function element:BuildIconList(size)
+    self.iconlist.icons = {}
+    self.iconlist.size_large = size or 24
+    self.iconlist.size_small = self.iconlist.size_large - 2
+
+    self.iconlist.numrows = 0
+    self.iconlist.numcols = math.floor((self.panel.frame.w - 1) / self.iconlist.size_large)
+    self.iconlist.xoff = self.panel.frame.w / 2 - (self.iconlist.numcols * self.iconlist.size_large) / 2 + self.panel.frame.x
+
+    for groupname, groupinfo in sortedPairs(editor.tiles.sets) do
+        -- increment once per set for the text
+        self.iconlist.numrows = self.iconlist.numrows + 1
+
+        self.iconlist.icons[self.iconlist.numrows] = {
+            text = string.replace(string.upper(groupname), "_", " "),
+        }
+
+        -- get packed rects
+        local bin = binpack(self.iconlist.numcols, 9999)
+        local row = 0
+
+        for i, set in ipairs(groupinfo) do
+            local data = bin:Insert(set.cols, set.rows)
+
+            local xmin = data.x + 1
+            local ymin = data.y + 1
+            local xmax = data.x + data.w
+            local ymax = data.y + data.h
+
+            local num = 0
+            for y = ymin, ymax do
+                local yoff = self.iconlist.numrows + y
+
+                if not self.iconlist.icons[yoff] then
+                    self.iconlist.icons[yoff] = {}
+                end
+
+                for x = xmin, xmax do
+                    num = num + 1
+                    if not set[num] then
+                        self.iconlist.icons[yoff][x] = false
+                    end
+
+                    self.iconlist.icons[yoff][x] = {
+                        dict = set[num].dict,
+                        index = (yoff - 1) * self.iconlist.numcols + x,
+                    }
+                end
+            end
+            row = math.max(row, data.y + data.h)
+        end
+        self.iconlist.numrows = self.iconlist.numrows + row
+    end
+
+    self.iconlist.minrow = 1
+    self.iconlist.maxrow = math.floor(self.panel.frame.h / self.iconlist.size_large)
+    self.panel:SetContentsLength(self.iconlist.numrows * self.iconlist.size_large)
+end
+
+
+--[[
+
+]]
+local color_black = Color(0, 0, 0)
+local color_white = Color(255, 255, 255)
+
+function element:DrawIconlistHeaders(scroll)
+    -- offsets
+    local xoff = self.iconlist.xoff + (self.iconlist.size_large * self.iconlist.numcols) / 2
+    local yoff = scroll + 2
+
+    -- category headers
+    render.setColor(self.panel.header.color2)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or not self.iconlist.icons[row].text then continue end
+        render.drawRectFast(self.panel.frame.x + 4, (row - 1) * self.iconlist.size_large + yoff, self.panel.frame.w - 8, self.panel.header.h)
+    end
+    render.setColor(self.panel.header.color1)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or not self.iconlist.icons[row].text then continue end
+        render.drawRectFast(self.panel.frame.x + 4, (row - 1) * self.iconlist.size_large + yoff, self.panel.frame.w - 8, self.panel.header.h / 2)
+    end
+    render.setColor(color_black)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or not self.iconlist.icons[row].text then continue end
+        render.drawRectOutline(self.panel.frame.x + 4, (row - 1) * self.iconlist.size_large + yoff, self.panel.frame.w - 8, self.panel.header.h)
+    end
+    render.setFont(self.panel.title.font)
+    render.setColor(self.panel.title.color)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or not self.iconlist.icons[row].text then continue end
+        render.drawText(xoff, (row - 1) * self.iconlist.size_large + yoff - 1, self.iconlist.icons[row].text, 1)
+    end
+end
+
+
+--[[
+
+]]
+function element:DrawIconList(scroll)
+    render.setColor(self.iconlist.color_background)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or self.iconlist.icons[row].text then continue end
+        for col, iconInfo in pairs(self.iconlist.icons[row]) do
+            if self:IsSelected(row, col) then
+                continue
+            end
+            local icon = GetSprite(iconInfo.dict)
+            if not icon then
+                continue
+            end
+            render.drawRectFast(self.iconlist.xoff + (col - 1) * self.iconlist.size_large, scroll + (row - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small)
+        end
+    end
+    render.setColor(color_white)
+    render.setMaterial(editor.tiles.texture)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or self.iconlist.icons[row].text then continue end
+        for col, iconInfo in pairs(self.iconlist.icons[row]) do
+            if self:IsSelected(row, col) then
+                continue
+            end
+            local icon = GetSprite(iconInfo.dict)
+            if not icon then
+                continue
+            end
+            render.drawTexturedRectUVFast(self.iconlist.xoff + (col - 1) * self.iconlist.size_large, scroll + (row - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small,
+                icon.u0, icon.v0, icon.u1, icon.v1, true)
+        end
+    end
+    render.setMaterial()
+    render.setColor(color_black)
+    for row = self.iconlist.minrow, self.iconlist.maxrow do
+        if not self.iconlist.icons[row] or self.iconlist.icons[row].text then continue end
+        for col, iconInfo in pairs(self.iconlist.icons[row]) do
+            if self:IsSelected(row, col) then
+                continue
+            end
+            render.drawRectOutline(self.iconlist.xoff + (col - 1) * self.iconlist.size_large, scroll + (row - 1) * self.iconlist.size_large, self.iconlist.size_small, self.iconlist.size_small)
+        end
+    end
+end
+
+
+--[[
+
+]]
+function element:DrawIconSelected(scroll)
+    if not self.selection then
+        return
+    end
+    if self.selection.row < self.iconlist.minrow or self.selection.row > self.iconlist.maxrow then
+        return
+    end
+
+    local icon = GetSprite(self.selection.dict)
+    if not icon then
+        return
+    end
+
+    local py = (self.selection.row - 1) * self.iconlist.size_large
+    local px = (self.selection.col - 1) * self.iconlist.size_large + self.iconlist.xoff
+
+    render.setColor(self.iconlist.color_selected)
+    render.drawRect(px - 2, scroll + py - 2, self.iconlist.size_large + 2, self.iconlist.size_large + 2)
+
+    render.setColor(self.iconlist.color_background)
+    render.drawRect(px, scroll + py, self.iconlist.size_small, self.iconlist.size_small)
+
+    render.setColor(color_white)
+    render.setMaterial(editor.tiles.texture)
+    render.drawTexturedRectUVFast(px, scroll + py, self.iconlist.size_small, self.iconlist.size_small, icon.u0, icon.v0, icon.u1, icon.v1, true)
+    render.setMaterial()
+
+    render.setColor(color_black)
+    render.drawRectOutline(px, scroll + py, self.iconlist.size_small, self.iconlist.size_small)
+end

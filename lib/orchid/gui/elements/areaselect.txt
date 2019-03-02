@@ -1,0 +1,116 @@
+--@name lib/orchid/gui/elements/areaselect
+--@author shadowscion
+--@client
+
+
+--[[
+    Area select.
+]]
+local element = { name = "areaselect" }
+
+
+--[[
+
+]]
+function element:Initialize()
+    self.snap = 0
+    self.startx = 0
+    self.starty = 0
+    self.endx = 0
+    self.endy = 0
+    self.colors = {
+        Color(0, 255, 0, 100),
+        Color(0, 255, 0, 200),
+        Color(255, 0, 0, 100),
+        Color(255, 0, 0, 200),
+    }
+    self.color1 = self.colors[1]
+    self.color2 = self.colors[2]
+end
+
+
+--[[
+
+]]
+function element:SetSnap(size)
+    self.snap = size
+end
+
+
+--[[
+
+]]
+function element:SetColors(num)
+    self.color1 = self.colors[num]
+    self.color2 = self.colors[num + 1]
+end
+
+
+--[[
+
+]]
+function element:SetStart(x, y)
+    self.startx = x
+    self.starty = y
+end
+
+
+--[[
+
+]]
+function element:SetFill(x, y)
+    local dx = x - self.startx
+    local dy = y - self.starty
+
+    local fx = self.snap * self.startx
+    local fy = self.snap * self.starty
+    local fw = self.snap * dx
+    local fh = self.snap * dy
+
+    if dx > 0 then
+        fw = fw + self.snap
+    else
+        fw = fw - self.snap
+        fx = fx + self.snap
+    end
+    if dy > 0 then
+        fh = fh + self.snap
+    else
+        fh = fh - self.snap
+        fy = fy + self.snap
+    end
+
+    self.endx = dx
+    self.endy = dy
+
+    return fx, fy, fw, fh
+end
+
+
+--[[
+
+]]
+function element:GetFill()
+    local minx = math.min(self.startx, self.startx + self.endx)
+    local maxx = math.max(self.startx, self.startx + self.endx)
+    local miny = math.min(self.starty, self.starty + self.endy)
+    local maxy = math.max(self.starty, self.starty + self.endy)
+    return minx, maxx, miny, maxy
+end
+
+
+--[[
+
+]]
+function element:Draw()
+    render.setColor(self.color1)
+    render.drawRectFast(self.x, self.y, self.w, self.h)
+    --render.setColor(self.color2)
+    --render.drawRectOutline(self.x, self.y, self.w, self.h)
+end
+
+
+--[[
+
+]]
+return element

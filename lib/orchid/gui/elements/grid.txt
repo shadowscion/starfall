@@ -1,0 +1,166 @@
+--@name lib/orchid/gui/elements/grid
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local element = { name = "grid" }
+
+function element:Initialize()
+    self.grid = {
+        size = 0,
+        rows = 0,
+        min_row = 0,
+        max_row = 0,
+        cols = 0,
+        min_col = 0,
+        max_col = 0,
+        color1 = Color(228, 241, 254),
+        color2 = Color(179, 215, 242),
+        outline = false,
+        outlinecolor = Color(0, 0, 0),
+    }
+    self.border = {
+        draw = false,
+        color = Color(0, 0, 0),
+    }
+    self.contents = {}
+end
+
+
+--[[
+    Below or above min/max are hidden.
+]]
+function element:SetRows(rows, min, max)
+    self.grid.rows = rows
+    self.grid.min_row = math.clamp(min or 0, 0, rows)
+    self.grid.max_row = math.clamp(max or rows, 0, rows)
+end
+
+function element:SetCols(cols, min, max)
+    self.grid.cols = cols
+    self.grid.min_col = math.clamp(min or 0, 0, cols)
+    self.grid.max_col = math.clamp(max or cols, 0, cols)
+end
+
+
+--[[
+    Cell size is determined automatically by the dimensions.
+]]
+function element:SetGrid(rows, cols, minrows, maxrows, mincols, maxcols)
+    self:SetRows(rows, minrows, maxrows)
+    self:SetCols(cols, mincols, maxcols)
+
+    self.grid.size = math.floor(self.w / self.grid.cols)
+
+    self.old_x = self.x
+    self.old_y = self.y
+    self.old_w = self.w
+    self.old_h = self.h
+
+    self.w = self.grid.size * self.grid.cols
+    self.h = self.grid.size * self.grid.rows
+    self.x = self.x + self.old_w / 2 - self.w / 2
+
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:GetCursorCell(cursorx, cursory)
+    local row = math.ceil(((cursory - self.y) / (self.grid.size * self.grid.rows)) * self.grid.rows)
+    local col = math.ceil(((cursorx - self.x) / (self.grid.size * self.grid.cols)) * self.grid.cols)
+    local index = (row - 1) * self.grid.cols + col
+    local ongrid = row > self.grid.min_row and row <= self.grid.max_row and col > self.grid.min_col and col <= self.grid.max_col
+    return row - 1, col - 1, index, ongrid
+end
+
+
+--[[
+
+]]
+function element:HasContents(row, col)
+    if self.contents[row] and self.contents[row][col] then
+        return true
+    end
+    return false
+end
+
+
+--[[
+
+]]
+function element:SetContents(row, col, contents)
+    if not contents then
+        return
+    end
+
+    local row = math.clamp(row or 0, 0, self.grid.rows)
+    local col = math.clamp(col or 0, 0, self.grid.cols)
+
+    self.contents[row] = self.contents[row] or {}
+    self.contents[row][col] = contents
+
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:RemoveContents(row, col)
+    local row = math.clamp(row or 0, 0, self.grid.rows)
+    local col = math.clamp(col or 0, 0, self.grid.cols)
+
+    if self:HasContents(row, col) then
+        self.contents[row][col] = nil
+        self:UpdateRT()
+    end
+end
+
+
+--[[
+
+]]
+function element:DrawContents(row, col)
+    render.setColor(Color(255, 0, 0))
+    render.drawRectFast(self.x + col * self.grid.size, self.y + row * self.grid.size, self.grid.size, self.grid.size)
+end
+
+
+--[[
+
+]]
+function element:Draw()
+    for y = self.grid.min_row, self.grid.max_row - 1 do
+        for x = self.grid.min_col, self.grid.max_col - 1 do
+            render.setColor(math.mod(y * self.grid.cols + x + y, 2) == 0 and self.grid.color1 or self.grid.color2)
+            render.drawRectFast(self.x + x * self.grid.size, self.y + y * self.grid.size, self.grid.size, self.grid.size)
+            if self:HasContents(y, x) then
+                self:DrawContents(y, x)
+            end
+        end
+    end
+    if self.grid.outline then
+        render.setColor(self.grid.outlinecolor)
+        for y = self.grid.min_row, self.grid.max_row - 1 do
+            for x = self.grid.min_col, self.grid.max_col - 1 do
+                render.drawRectOutline(self.x + x * self.grid.size, self.y + y * self.grid.size, self.grid.size, self.grid.size)
+            end
+        end
+    end
+    if self.border.draw then
+        render.setColor(self.border.color)
+        render.drawRectOutline(self.x, self.y, self.w, self.h)
+    end
+end
+
+
+--[[
+
+]]
+return element

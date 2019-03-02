@@ -1,0 +1,204 @@
+--@name lib/orchid/gui/element
+--@author shadowscion
+--@client
+--@includedir /lib/orchid/gui/elements/
+
+
+--[[
+
+]]
+local elements = {}
+local function registerElement(name, base, meta)
+    local class = meta or {}
+    local class_mt = { __index = class }
+
+    function class:Create()
+        local m = {
+            x = 0,
+            y = 0,
+            w = 0,
+            h = 0,
+            nodraw = false,
+        }
+
+        setmetatable(m, class_mt)
+
+        return m
+    end
+
+    if elements[base] then
+        setmetatable(class, { __index = elements[base] })
+    end
+
+    elements[name] = class
+
+    return class
+end
+
+local function createElement(name, menu, renderTarget)
+    if not menu or not renderTarget or not elements[name] then
+        return { nodraw = true }
+    end
+    local self = elements[name]:Create()
+    menu:AddElement(renderTarget, self)
+    return self
+end
+
+
+--[[
+    Base element type all others should inherit from.
+]]
+local element = registerElement("element", nil)
+
+function element:Initialize()
+
+end
+
+
+--[[
+
+]]
+function element:GetFonts()
+    return self.menu.fonts
+end
+
+function element:RegisterCallback(event, key, callback)
+    self.menu:RegisterCallback(event, key, callback, self.renderTarget)
+end
+
+
+--[[
+    Should be called when something needs to be changed.
+]]
+function element:UpdateRT()
+    self.menu:UpdateRT(self.renderTarget)
+end
+
+function element:Update(menu)
+    if menu then
+        self.menu:Update()
+        return
+    end
+end
+
+
+--[[
+
+]]
+function element:Format()
+
+end
+
+
+--[[
+
+]]
+function element:ApplySkin(skin)
+    if not skin then
+        return
+    end
+    for field, info in pairs(skin) do
+        if not self[field] then
+            continue
+        end
+        for key, change in pairs(info) do
+            if not self[field][key] then
+                continue
+            end
+            self[field][key] = change
+        end
+    end
+    self:UpdateRT()
+end
+
+
+--[[
+    Sets blur filter.
+]]
+function element:SetBlur(type, x, y, passes, alpha, scissor)
+    if not type then
+        self.blur = nil
+        self:UpdateRT()
+        return
+    end
+    self.blur = {
+        x = x,
+        y = y,
+        type = type,
+        passes = passes,
+        alpha = alpha,
+        scissor = scissor
+    }
+    self:UpdateRT()
+end
+
+
+--[[
+    Sets element X and Y position.
+]]
+function element:SetPos(x, y)
+    self.x = x or self.x
+    self.y = y or self.y
+    self:Format()
+    self:UpdateRT()
+end
+
+
+--[[
+    Sets element width and height.
+]]
+function element:SetSize(w, h)
+    self.w = w or self.w
+    self.h = h or self.h
+    self:Format()
+    self:UpdateRT()
+end
+
+
+--[[
+    Enables or disables rendering and drawing.
+]]
+function element:SetNodraw(bool)
+    if self.nodraw ~= bool then
+        self.nodraw = bool
+        self:UpdateRT()
+    end
+end
+
+
+--[[
+    Returns true if point XY is within element boundaries.
+]]
+function element:Contains(x, y)
+    if not x or not y then return
+        false
+    end
+    return x > self.x and y > self.y and x < self.x + self.w and y < self.y + self.h
+end
+
+function element:PartContains(part, x, y)
+    if not part or not x or not y then
+        return false
+    end
+    return x > part.x and y > part.y and x < part.x + part.w and y < part.y + part.h
+end
+
+
+--[[
+
+]]
+function element:Draw()
+
+end
+
+
+--[[
+
+]]
+local list = requiredir("/lib/orchid/gui/elements/")
+
+for file, meta in pairs(list) do
+    registerElement(meta.name, "element", meta)
+end
+
+return { registerElement = registerElement, createElement = createElement, elements = elements }

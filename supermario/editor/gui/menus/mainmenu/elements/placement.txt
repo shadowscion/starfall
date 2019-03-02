@@ -1,0 +1,228 @@
+--@name supermario/editor/gui/menus/mainmenu/elements/placement
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local editor = editor
+local gui = editor.gui
+
+
+--[[
+
+]]
+local color_white = Color(255, 255, 255)
+
+local function GetSprite(dict)
+    return editor.tiles.dict[dict]
+end
+
+local function DrawContents(self, row, col)
+    local icon = GetSprite(self.contents[row][col])
+    if not icon then
+        return
+    end
+
+    render.setColor(color_white)
+    render.setMaterial(editor.tiles.texture)
+    render.drawTexturedRectUVFast(self.x + col * self.grid.size, self.y + row * self.grid.size, self.grid.size, self.grid.size, icon.u0, icon.v0, icon.u1, icon.v1, true)
+    render.setMaterial()
+end
+
+
+--[[
+
+]]
+local element = gui.registerElement("placement", "element")
+
+function element:Initialize()
+    self.panel = gui.createElement("frame", self.menu, self.renderTarget)
+    self.panel:SetPos(0, 0)
+    self.panel:SetSize(512, 256)
+    self.panel:SetTitle("TILE PLACEMENT")
+
+    self.grid = gui.createElement("grid", self.menu, self.renderTarget)
+    self.grid:SetSize(self.panel.frame.h, self.panel.frame.h)
+    self.grid:SetPos(self.panel.frame.x + self.panel.frame.w / 2 - self.grid.w / 2, self.panel.frame.y)
+    self.grid:SetGrid(16, 16)
+    self.grid.border.draw = true
+    self.grid.DrawContents = DrawContents
+
+    self.grid_left = gui.createElement("grid", self.menu, "window.placement_side")
+    self.grid_left:SetSize(self.grid.w, self.grid.h)
+    self.grid_left:SetPos(self.grid.x - self.grid.w , self.grid.y)
+    self.grid_left:SetGrid(16, 16, nil, nil, 7, 16)
+    --self.grid_left:SetBlur("radial", 3, 1, 10, 30, true)
+    --self.grid_left.grid.outline = true
+    self.grid_left.DrawContents = DrawContents
+
+    self.grid_right = gui.createElement("grid", self.menu, "window.placement_side")
+    self.grid_right:SetSize(self.grid.w, self.grid.h)
+    self.grid_right:SetPos(self.grid.x + self.grid.w, self.grid.y)
+    self.grid_right:SetGrid(16, 16, nil, nil, 0, 9)
+    --self.grid_right:SetBlur("radial", 3, 1, 10, 30, true)
+    --self.grid_right.grid.outline = true
+    self.grid_right.DrawContents = DrawContents
+
+    self.area_select = gui.createElement("areaselect", self.menu, "overlay")
+    self.area_select:SetNodraw(true)
+    self.area_select:SetSnap(self.grid.grid.size)
+
+    self.ghost = gui.createElement("element", self.menu, "overlay")
+    self.ghost:SetSize(self.grid.grid.size, self.grid.grid.size)
+   -- self.ghost:SetNodraw(true)
+
+    local color_white_alpha = Color(255, 255, 255, 150)
+    local color_red_alpha = Color(255, 0, 0, 150)
+
+    self.ghost.Draw = function(ghost)
+        local icon = GetSprite(ghost.dict)
+        if icon then
+            render.setColor(color_white_alpha)
+            render.setMaterial(editor.tiles.texture)
+            render.drawTexturedRectUVFast(ghost.x, ghost.y, ghost.w, ghost.h, icon.u0, icon.v0, icon.u1, icon.v1, true)
+            render.setMaterial()
+        else
+            render.setColor(color_red_alpha)
+            render.drawRectFast(ghost.x, ghost.y, ghost.w, ghost.h)
+        end
+    end
+
+    self.ghost.SetLastHover = function(ghost, row, col, num, dict)
+        if ghost.last_hover ~= num then
+            ghost:SetPos(self.grid.x + col * self.grid.grid.size, self.grid.y + row * self.grid.grid.size)
+            ghost:SetNodraw(false)
+            ghost.last_hover = num
+        end
+        ghost.dict = dict
+    end
+
+    self:RegisterToolCallbacks()
+end
+
+
+--[[
+
+]]
+function element:RegisterToolCallbacks()
+    local useState = false
+
+    self:RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
+        if not onscreen then
+            self.ghost:SetNodraw(true)
+            return
+        end
+
+        local row, col, num, ongrid = self.grid:GetCursorCell(cursorx, cursory)
+        if not ongrid then
+            self.ghost:SetNodraw(true)
+            return
+        end
+
+        if editor.mainmenu.activetool == "place" then
+            self.ghost:SetLastHover(row, col, num, editor.mainmenu.getSelection())
+            if not useState or useState == num or not editor.mainmenu.getSelection() then
+                return
+            end
+            editor.mainmenu.tools["place"].onUse(self.grid, row, col, editor.mainmenu.getSelection())
+            useState = num
+            return
+        end
+
+        if editor.mainmenu.activetool == "remove" then
+            self.ghost:SetLastHover(row, col, num, nil)
+            if not useState or useState == num then
+                return
+            end
+            editor.mainmenu.tools["remove"].onUse(self.grid, row, col)
+            useState = num
+            return
+        end
+
+        if editor.mainmenu.activetool == "fill" or editor.mainmenu.activetool == "clear" then
+            if not useState or useState == num then
+                return
+            end
+            local x, y, w, h = self.area_select:SetFill(col, row)
+            self.area_select:SetPos(self.grid.x + x, self.grid.y + y)
+            self.area_select:SetSize(w, h)
+            useState = num
+            return
+        end
+    end)
+
+    self:RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen then
+            return
+        end
+
+        local row, col, num, ongrid = self.grid:GetCursorCell(cursorx, cursory)
+        if not ongrid or useState == num then
+            return
+        end
+
+        if editor.mainmenu.activetool == "place" then
+            if not editor.mainmenu.getSelection() then
+                return
+            end
+            editor.mainmenu.tools["place"].onUse(self.grid, row, col, editor.mainmenu.getSelection())
+            useState = num
+            return
+        end
+
+        if editor.mainmenu.activetool == "remove" then
+            editor.mainmenu.tools["remove"].onUse(self.grid, row, col)
+            useState = num
+            return
+        end
+
+        if editor.mainmenu.activetool == "fill" then
+            if not editor.mainmenu.getSelection() then
+                return
+            end
+            self.area_select:SetNodraw(false)
+            self.area_select:SetColors(1)
+            self.area_select:SetStart(col, row)
+            useState = num
+            return
+        end
+
+        if editor.mainmenu.activetool == "clear" then
+            self.area_select:SetNodraw(false)
+            self.area_select:SetColors(3)
+            self.area_select:SetStart(col, row)
+            useState = num
+            return
+        end
+    end)
+
+    self:RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        if not useState then
+            return
+        end
+
+        useState = false
+
+        if editor.mainmenu.activetool == "fill" then
+            if not editor.mainmenu.getSelection() then
+                return
+            end
+            editor.mainmenu.tools["fill"].onUse(self.grid, editor.mainmenu.getSelection(), self.area_select:GetFill())
+            self.area_select:SetNodraw(true)
+            self.area_select:SetSize(0, 0)
+            return
+        end
+
+        if editor.mainmenu.activetool == "clear" then
+            if not editor.mainmenu.getSelection() then
+                return
+            end
+            editor.mainmenu.tools["clear"].onUse(self.grid, self.area_select:GetFill())
+            self.area_select:SetNodraw(true)
+            self.area_select:SetSize(0, 0)
+            return
+        end
+    end)
+end

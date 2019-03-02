@@ -1,0 +1,131 @@
+--@name lib/orchid/gui/elements/button
+--@author shadowscion
+--@client
+
+
+--[[
+    Button.
+]]
+local element = { name = "button" }
+
+function element:Initialize()
+    self.button = {
+        x = 0,
+        y = 0,
+        w = 0,
+        h = 18,
+        color1 = Color(104, 109, 224),
+        color2 = Color(72, 52, 212),
+        color3 = Color(180, 182, 220),
+        color4 = Color(124, 114, 208),
+    }
+    self.buttontext = {
+        x = 0,
+        y = 0,
+        text = "button",
+        font = self:GetFonts()["default_font_small"],
+        color = Color(228, 241, 254),
+    }
+    self.border = {
+        draw = true,
+        color = Color(0, 0, 0),
+    }
+
+    self:SetPos(128, 128)
+    self:SetSize(72, 32)
+end
+
+
+--[[
+
+]]
+function element:RegisterDefaultCallbacks()
+    self:RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen then
+            return
+        end
+        if self.button_override then
+            return
+        end
+        if self:Contains(cursorx, cursory) then
+            self:OnPress(cursorx, cursory, onscreen)
+        end
+    end)
+    self:RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        self:OnRelease(cursorx, cursory, onscreen)
+    end)
+end
+
+
+--[[
+
+]]
+function element:OnPress(cursorx, cursory, onscreen)
+    if not self.button_active then
+        self.button_active = true
+        self:UpdateRT()
+    end
+end
+
+function element:OnRelease(cursorx, cursory, onscreen)
+    if self.button_active then
+        self.button_active = false
+        self:UpdateRT()
+    end
+end
+
+
+--[[
+    Set text text and font.
+]]
+function element:SetText(text, font)
+    if text then self.buttontext.text = text end
+    if font then self.buttontext.font = font end
+    self:Format()
+    self:UpdateRT()
+end
+
+
+--[[
+    Automatically resizes parts.
+]]
+function element:Format()
+    self.button.x = self.x
+    self.button.y = self.y
+    self.button.w = self.w
+    self.button.h = self.h
+
+    render.setFont(self.buttontext.font)
+    local w, h = render.getTextSize(self.buttontext.text)
+    self.buttontext.x = self.x + self.w / 2
+    self.buttontext.y = self.y + self.button.h / 2 - h / 2
+
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:Draw()
+    render.setColor(self.button_active and self.button.color1 or self.button.color3)
+    render.drawRectFast(self.button.x, self.button.y, self.button.w, self.button.h)
+
+    render.setColor(self.button_active and self.button.color2 or self.button.color4)
+    render.drawRectFast(self.button.x, self.button.y +self.button.h / 2, self.button.w, self.button.h / 2)
+
+    render.setFont(self.buttontext.font)
+    render.setColor(self.buttontext.color)
+    render.drawText(self.buttontext.x, self.buttontext.y, self.buttontext.text, 1)
+
+    if self.border.draw then
+        render.setColor(self.border.color)
+        render.drawRectOutline(self.button.x, self.button.y, self.button.w, self.button.h)
+    end
+end
+
+
+--[[
+
+]]
+return element

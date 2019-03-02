@@ -1,0 +1,213 @@
+--@name lib/binpack
+
+-- original -> https://github.com/MikePopoloski/SharpFont/blob/master/SharpFont/Internal/BinPacker.cs
+-- converted to lua
+
+-- purpose: pack rectanges into a space
+
+--[[
+--@include lib/binpack.txt
+
+local bin = require("lib/binpack.txt")
+
+local grid_size = 16
+local grid_rows = 0
+local grid_cols = 8
+local grid_cells = {}
+
+local pack = bin(grid_cols, 99999)
+
+for i = 1, 5 do
+    local data = pack:Insert(math.random(1, 6), math.random(1, 6))
+
+    grid_rows = math.max(grid_rows, data.y + data.h)
+
+    local xmin = data.x + 1
+    local ymin = data.y + 1
+    local xmax = data.x + data.w
+    local ymax = data.y + data.h
+
+    local color = Color(math.random(0, 360), math.random(0.5, 1), math.random(0.5, 1)):hsvToRGB()
+    for row = ymin, ymax do
+        grid_cells[row] = grid_cells[row] or {}
+        for col = xmin, xmax do
+            grid_cells[row][col] = color
+        end
+    end
+end
+
+hook.add("render", "", function()
+    for y, row in ipairs(grid_cells) do
+        for x, col in pairs(row) do
+            render.setColor(col)
+            render.drawRectFast(x * grid_size, y * grid_size, grid_size-1, grid_size-1)
+        end
+    end
+end)
+]]
+
+
+--[[
+
+]]
+local rect = {}
+local rect_mt = { __index = rect }
+
+local function Rect(x, y, w, h)
+    return setmetatable({
+        x = x,
+        y = y,
+        w = w,
+        h = h,
+    }, rect_mt)
+end
+
+function rect:Contains(other)
+    return other.x >= self.x and other.y >= self.y and other:GetRight() <= self:GetRight() and other:GetBottom() <= self:GetBottom()
+end
+
+function rect:Clone()
+    return Rect(self.x, self.y, self.w, self.h)
+end
+
+function rect:GetRight()
+    return self.x + self.w
+end
+
+function rect:GetBottom()
+    return self.y + self.h
+end
+
+
+--[[
+
+]]
+local binpack = {}
+local binpack_mt = { __index = binpack }
+
+
+--[[
+
+]]
+function binpack:SplitFreeNode(freeNode, usedNode)
+    local insideX = usedNode.x < freeNode:GetRight() and usedNode:GetRight() > freeNode.x
+    local insideY = usedNode.y < freeNode:GetBottom() and usedNode:GetBottom() > freeNode.y
+
+    if not insideX or not insideY then return false end
+
+    if insideX then
+        if usedNode.y > freeNode.y and usedNode.y < freeNode:GetBottom() then
+            local newNode = freeNode:Clone()
+            newNode.h = usedNode.y - newNode.y
+            table.insert(self.freeList, newNode)
+        end
+
+        if usedNode:GetBottom() < freeNode:GetBottom() then
+            local newNode = freeNode:Clone()
+            newNode.y = usedNode:GetBottom()
+            newNode.h = freeNode:GetBottom() - usedNode:GetBottom()
+            table.insert(self.freeList, newNode)
+        end
+    end
+
+    if insideY then
+        if usedNode.x > freeNode.x and usedNode.x < freeNode:GetRight() then
+            local newNode = freeNode:Clone()
+            newNode.w = usedNode.x - newNode.x
+            table.insert(self.freeList, newNode)
+        end
+
+        if usedNode:GetRight() < freeNode:GetRight() then
+            local newNode = freeNode:Clone()
+            newNode.x = usedNode:GetRight()
+            newNode.w = freeNode:GetRight() - usedNode:GetRight()
+            table.insert(self.freeList, newNode)
+        end
+    end
+
+    return true
+end
+
+
+--[[
+
+]]
+function binpack:Insert(w, h)
+    w = math.ceil(w)
+    h = math.ceil(h)
+
+    local node = Rect(0, 0, 0, 0)
+    local min = math.huge
+    local max = math.huge
+
+    local count = #self.freeList
+    for i = 1, count do
+        local irect = self.freeList[i]
+
+        if irect.w < w or irect.h < h then continue end
+
+        local x = math.abs(irect.w - w)
+        local y = math.abs(irect.h - h)
+        local min_ = math.min(x, y)
+        local max_ = math.max(x, y)
+
+        if min_ < min or (min_ == min and max_ < max) then
+            node.x = irect.x
+            node.y = irect.y
+            node.w = w
+            node.h = h
+            min = min_
+            max = max_
+        end
+    end
+
+    if node.h == 0 then return node end
+
+    local i = 1
+    while i <= count do
+        if self:SplitFreeNode(self.freeList[i], node) then
+            table.remove(self.freeList, i)
+            i = i - 1
+            count = count - 1
+        end
+        i = i + 1
+    end
+
+    local i = 1
+    while i <= #self.freeList do
+        local j = i + 1
+        while j <= #self.freeList do
+            local idata = self.freeList[i]
+            local jdata = self.freeList[j]
+            if jdata:Contains(idata) then
+                table.remove(self.freeList, i)
+                i = i - 1
+                break
+            end
+
+            if idata:Contains(jdata) then
+                table.remove(self.freeList, j)
+                j = j - 1
+            end
+
+            j = j + 1
+        end
+        i = i + 1
+    end
+
+    return node
+end
+
+
+--[[
+
+]]
+local function New(maxWidth, maxHeight)
+    return setmetatable({
+        freeList = {
+            Rect(0, 0, math.floor(maxWidth), math.floor(maxHeight))
+        }
+    }, binpack_mt)
+end
+
+return New

@@ -1,0 +1,110 @@
+--@name lib/orchid/gui/elements/frame
+--@author shadowscion
+--@client
+
+
+--[[
+    Frame.
+]]
+local element = { name = "frame" }
+
+function element:Initialize()
+    self.header = {
+        x = 0,
+        y = 0,
+        w = 0,
+        h = 16,
+        color1 = Color(104, 109, 224),
+        color2 = Color(72, 52, 212),
+    }
+    self.title = {
+        x = 0,
+        y = 0,
+        text = "frame",
+        font = self:GetFonts()["default_font_large"],
+        color = Color(228, 241, 254),
+    }
+    self.frame = {
+        x = 0,
+        y = 0,
+        w = 0,
+        h = 0,
+        color = Color(171, 174, 234),
+        draw = true,
+    }
+    self.border = {
+        draw = true,
+        color = Color(0, 0, 0),
+    }
+
+    self:SetPos(128, 128)
+    self:SetSize(256, 256)
+end
+
+
+--[[
+    Set title text and font.
+]]
+function element:SetTitle(text, font)
+    if text then self.title.text = text end
+    if font then self.title.font = font end
+    self:Format()
+    self:UpdateRT()
+end
+
+
+--[[
+    Automatically resizes parts.
+]]
+function element:Format()
+    self.header.x = self.x
+    self.header.y = self.y
+    self.header.w = self.w
+
+    render.setFont(self.title.font)
+    local w, h = render.getTextSize(self.title.text)
+    self.title.x = self.x + self.w / 2
+    self.title.y = self.y + self.header.h / 2 - h / 2
+
+    self.frame.x = self.x
+    self.frame.y = self.y + self.header.h
+    self.frame.w = self.w
+    self.frame.h = self.h - self.header.h
+
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:Draw()
+    render.setColor(self.header.color1)
+    render.drawRectFast(self.header.x, self.header.y, self.header.w, self.header.h)
+
+    render.setColor(self.header.color2)
+    render.drawRectFast(self.header.x, self.header.y +self.header.h / 2, self.header.w, self.header.h / 2)
+
+    render.setFont(self.title.font)
+    render.setColor(self.title.color)
+    render.drawText(self.title.x, self.title.y, self.title.text, 1)
+
+    if self.frame.draw then
+        render.setColor(self.frame.color)
+        render.drawRectFast(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+        end
+    end
+    if self.border.draw then
+        render.drawRectOutline(self.header.x, self.header.y, self.header.w, self.header.h)
+    end
+end
+
+
+--[[
+
+]]
+return element

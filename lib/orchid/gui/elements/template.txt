@@ -1,0 +1,27 @@
+--@name lib/orchid/gui/elements/template
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local element = { name = "template" }
+
+function element:Initialize()
+
+end
+
+
+--[[
+
+]]
+function element:Draw()
+
+end
+
+
+--[[
+
+]]
+return element

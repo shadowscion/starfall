@@ -1,0 +1,44 @@
+--@name lib/orchid/init
+--@author shadowscion
+--@client
+--@include lib/orchid/gui/menu.txt
+
+local gui = require("lib/orchid/gui/menu.txt")
+
+--[[local menu = gui.createMenu()
+menu:AddRT("main")
+menu:ClearRT("main", Color(255, 255, 255))
+
+
+local skin = {
+    header = {
+        color1 = Color(106, 176, 76),
+        color2 = Color(186, 220, 88),
+    },
+    title = {
+        color = Color(246, 241, 221),
+    },
+    frame = {
+        color = Color(246, 241, 221),
+    },
+    scrollbar = {
+        color = Color(245, 231, 176),
+    },
+    handle = {
+        color1 = Color(106, 176, 76),
+        color2 = Color(186, 220, 88),
+    },
+    button = {
+        color1 = Color(248, 199, 151),
+        color2 = Color(242, 232, 184),
+        color3 = Color(106, 176, 76),
+        color4 = Color(186, 220, 88),
+    },
+}
+
+local test = gui.createElement("scrollframe", menu, "main")
+
+test:ApplySkin(skin)]]
+
+
+return gui

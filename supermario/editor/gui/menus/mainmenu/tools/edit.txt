@@ -1,0 +1,174 @@
+--@name supermario/editor/gui/menus/mainmenu/tools/edit
+--@author shadowscion
+--@client
+
+
+--[[
+
+]]
+local editor = editor
+local gui = editor.gui
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("place")
+
+tool.info = "Press (or hold) <E> to place a sprite."
+tool.onUse = function(grid, row, col, contents)
+    if not grid or not row or not col or not contents then
+        return
+    end
+    grid:SetContents(row, col, contents)
+end
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("remove")
+
+tool.info = "Press (or hold) <E> to remove a sprite."
+tool.onUse = function(grid, row, col)
+    if not grid or not row or not col then
+        return
+    end
+    grid:RemoveContents(row, col)
+end
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("fill")
+
+tool.info = "Hold and drag <E> to fill an area with sprites."
+tool.onUse = function(grid, contents, cmin, cmax, rmin, rmax)
+    if not grid or not cmin or not cmax or not rmin or not rmax or not contents then
+        return
+    end
+    for row = rmin, rmax do
+        for col = cmin, cmax do
+            grid:SetContents(row, col, contents)
+        end
+    end
+end
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("clear")
+
+tool.info = "Hold and drag <E> to clear an area."
+tool.onUse = function(grid, cmin, cmax, rmin, rmax)
+    if not grid or not cmin or not cmax or not rmin or not rmax then
+        return
+    end
+    for row = rmin, rmax do
+        for col = cmin, cmax do
+            grid:RemoveContents(row, col)
+        end
+    end
+end
+
+
+--[[
+
+]]
+local tool = editor.mainmenu.registerTool("mapmover")
+
+tool.info = "Move to a new map grid."
+
+function editor.resetMap()
+    editor.map = {}
+    editor.map.grid = {}
+
+    editor.map.row_max = 0
+    editor.map.row_min = 0
+    editor.map.row = 0
+
+    editor.map.col_max = 0
+    editor.map.col_min = 0
+    editor.map.col = 0
+
+    editor.syncMap()
+end
+
+function editor.syncMap()
+    if not editor.map then
+        editor.resetMap()
+    end
+
+    local shiftrow = editor.map.row * 16
+    local shiftcol = editor.map.col * 16
+
+    for row = 0, 15 do
+        editor.map.grid[row + shiftrow] = editor.map.grid[row + shiftrow] or {}
+        for col = 0, 15 do
+            editor.map.grid[row + shiftrow][col + shiftcol] = nil
+        end
+    end
+
+    local isUsed = false
+    for row, contentRow in pairs(editor.mainmenu.placement.grid.contents) do
+        editor.map.grid[row + shiftrow] = editor.map.grid[row + shiftrow] or {}
+        for col, contentCol in pairs(contentRow) do
+            editor.map.grid[row + shiftrow][col + shiftcol] = contentCol
+            isUsed = true
+        end
+    end
+
+    return isUsed
+end
+
+local function setGridToMap(grid, shiftrow, shiftcol)
+    if not grid then
+        return
+    end
+    grid.contents = {}
+    for y = 0, 15 do
+        local row = y + shiftrow * 16
+        if not editor.map.grid[row] then
+            continue
+        end
+        for x = 0, 15 do
+            local col = x + shiftcol * 16
+            if not editor.map.grid[row][col] then
+                continue
+            end
+            grid:SetContents(y, x, editor.map.grid[row][col])
+        end
+    end
+    grid:UpdateRT()
+end
+
+tool.onUse = function(direction)
+    if not direction then
+        return
+    end
+    if not editor.map then
+        editor.resetMap()
+    end
+
+    local isUsed = editor.syncMap()
+
+    -- move map to a new grid
+    if     direction == 1 then editor.map.row = editor.map.row - 1
+    elseif direction == 2 then editor.map.col = editor.map.col + 1
+    elseif direction == 3 then editor.map.row = editor.map.row + 1
+    elseif direction == 4 then editor.map.col = editor.map.col - 1  end
+
+    if isUsed then
+        editor.map.row_min = math.min(editor.map.row_min, editor.map.row)
+        editor.map.row_max = math.max(editor.map.row_max, editor.map.row)
+        editor.map.col_min = math.min(editor.map.col_min, editor.map.col)
+        editor.map.col_max = math.max(editor.map.col_max, editor.map.col)
+    end
+
+    setGridToMap(editor.mainmenu.placement.grid, editor.map.row, editor.map.col)
+    setGridToMap(editor.mainmenu.placement.grid_left, editor.map.row, editor.map.col - 1)
+    setGridToMap(editor.mainmenu.placement.grid_right, editor.map.row, editor.map.col + 1)
+end
+

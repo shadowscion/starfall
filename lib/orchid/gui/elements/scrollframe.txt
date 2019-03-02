@@ -1,0 +1,209 @@
+--@name lib/orchid/gui/elements/scrollframe
+--@author shadowscion
+--@client
+
+
+--[[
+    Frame with scrollbar.
+]]
+local element = { name = "scrollframe" }
+
+function element:Initialize()
+    self.header = {
+        x = 0,
+        y = 0,
+        w = 0,
+        h = 16,
+        color1 = Color(104, 109, 224),
+        color2 = Color(72, 52, 212),
+    }
+    self.title = {
+        x = 0,
+        y = 0,
+        text = "scrollframe",
+        font = self:GetFonts()["default_font_large"],
+        color = Color(228, 241, 254),
+    }
+    self.frame = {
+        x = 0,
+        y = 0,
+        w = 0,
+        h = 0,
+        color = Color(171, 174, 234),
+        draw = true,
+    }
+    self.scrollbar = {
+        x = 0,
+        y = 0,
+        w = 16,
+        h = 0,
+        color = Color(171, 174, 234),
+    }
+    self.handle = {
+        x = 0,
+        y = 0,
+        w = 16,
+        h = 0,
+        color1 = Color(72, 52, 212),
+        color2 = Color(104, 109, 224),
+    }
+    self.border = {
+        draw = true,
+        color = Color(0, 0, 0),
+    }
+    self.contents = {
+        scroll = 0,
+        length = 50,
+        draw = true,
+        Draw = function()
+
+        end,
+    }
+
+    self:SetPos(128, 128)
+    self:SetSize(256, 256)
+
+    self:RegisterCallback("inputPressed", 15, function(cursorx, cursory, onscreen)
+        if not onscreen then
+            return
+        end
+        if self:PartContains(self.handle, cursorx, cursory) then
+            self.handle.scroll_from = cursory - self.handle.y
+            self:UpdateRT()
+        end
+    end)
+    self:RegisterCallback("inputReleased", 15, function(cursorx, cursory, onscreen)
+        if self.handle.scroll_from then
+            self.handle.scroll_from = nil
+            self:UpdateRT()
+        end
+    end)
+    self:RegisterCallback("cursorChanged", nil, function(cursorx, cursory, onscreen)
+        if not onscreen or not self.handle.scroll_from then
+            return
+        end
+
+        local min = self.scrollbar.y
+        local max = self.scrollbar.y + self.scrollbar.h - self.handle.h
+        local val = math.clamp(cursory - self.handle.scroll_from, min, max)
+
+        if self.handle.y ~= val then
+            self.handle.y = val
+            self.contents.scroll = math.floor(self.frame.y + ((val - min) * (self.frame.h - self.contents.length)) / (max - min))
+            self:OnScroll(min, max, val)
+            self:UpdateRT()
+        end
+    end)
+end
+
+
+--[[
+
+]]
+function element:OnScroll(min, max, val)
+
+end
+
+
+--[[
+    Set title text and font.
+]]
+function element:SetTitle(text, font)
+    if text then self.title.text = text end
+    if font then self.title.font = fon end
+    self:Format()
+    self:UpdateRT()
+end
+
+
+--[[
+    Automatically resizes parts.
+]]
+function element:Format()
+    self.header.x = self.x
+    self.header.y = self.y
+    self.header.w = self.w
+
+    render.setFont(self.title.font)
+    local w, h = render.getTextSize(self.title.text)
+    self.title.x = self.x + self.w / 2 - self.scrollbar.w / 2
+    self.title.y = self.y + self.header.h / 2 - h / 2
+
+    self.frame.x = self.x
+    self.frame.y = self.y + self.header.h
+    self.frame.w = self.w - self.scrollbar.w
+    self.frame.h = self.h - self.header.h
+
+    self.scrollbar.x = self.frame.x + self.frame.w
+    self.scrollbar.y = self.frame.y
+    self.scrollbar.h = self.frame.h
+
+    self.handle.x = self.scrollbar.x
+    self.handle.y = self.scrollbar.y
+    self.handle.h = (self.frame.h^2 / math.max(self.frame.h, self.contents.length))
+
+    self.contents.scroll = self.frame.y
+
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:SetContentsLength(len)
+    self.contents.length = len
+    self:Format()
+end
+
+
+--[[
+
+]]
+function element:Draw()
+    render.setColor(self.header.color1)
+    render.drawRectFast(self.header.x, self.header.y, self.header.w, self.header.h)
+
+    render.setColor(self.header.color2)
+    render.drawRectFast(self.header.x, self.header.y +self.header.h / 2, self.header.w, self.header.h / 2)
+
+    render.setFont(self.title.font)
+    render.setColor(self.title.color)
+    render.drawText(self.title.x, self.title.y, self.title.text, 1)
+
+    render.setColor(self.scrollbar.color)
+    render.drawRectFast(self.scrollbar.x, self.scrollbar.y, self.scrollbar.w, self.scrollbar.h)
+
+    render.setColor(self.handle.scroll_from and self.handle.color1 or self.handle.color2)
+    render.drawRectFast(self.handle.x, self.handle.y, self.handle.w, self.handle.h)
+
+    render.setColor(self.handle.scroll_from and self.handle.color2 or self.handle.color1)
+    render.drawRectFast(self.handle.x, self.handle.y, self.handle.w, self.handle.h / 15)
+    render.drawRectFast(self.handle.x, self.handle.y + self.handle.h - self.handle.h / 15, self.handle.w, self.handle.h / 15)
+
+    if self.frame.draw then
+        render.setColor(self.frame.color)
+        render.drawRectFast(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+
+        if self.border.draw then
+            render.setColor(self.border.color)
+            render.drawRectOutline(self.frame.x, self.frame.y, self.frame.w, self.frame.h)
+        end
+    end
+    if self.border.draw then
+        render.drawRectOutline(self.header.x, self.header.y, self.header.w, self.header.h)
+        render.drawRectOutline(self.scrollbar.x, self.scrollbar.y, self.scrollbar.w, self.scrollbar.h)
+        render.drawRectOutline(self.handle.x, self.handle.y, self.handle.w, self.handle.h)
+    end
+    if self.contents.draw then
+        render.enableScissorRect(self.frame.x, self.frame.y, self.frame.x + self.frame.w, self.frame.y + self.frame.h)
+        self.contents:Draw()
+        render.disableScissorRect()
+    end
+end
+
+
+--[[
+
+]]
+return element

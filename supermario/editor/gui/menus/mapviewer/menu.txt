@@ -1,0 +1,164 @@
+--@name supermario/editor/gui/menus/mapviewer/menu
+--@author shadowscion
+--@client
+
+--[[
+
+]]
+local editor = editor
+
+editor.mapviewer = {
+    menu = editor.gui.createMenu()
+}
+
+editor.mapviewer.menu:AddRT("mapviewer")
+editor.mapviewer.menu:SetNodraw(true)
+
+
+--[[
+
+]]
+local element = editor.gui.registerElement("mapviewer", "element")
+
+function element:Initialize()
+    self.nodraw = true
+
+    self.panel = editor.gui.createElement("frame", editor.mapviewer.menu, "mapviewer")
+    self.panel:SetPos(0, 0)
+    self.panel:SetSize(512, 512)
+    self.panel:SetTitle("MAP VIEWER")
+
+    self:CreateViewport()
+
+    local button = editor.gui.createElement("button", editor.mapviewer.menu, "mapviewer")
+    button:SetPos(self.viewport.x + self.viewport.w - 63, self.viewport.y + 3)
+    button:SetSize(60, 24)
+    button:SetText("Exit")
+    button:RegisterDefaultCallbacks()
+    button.OnPress = function(btn, cursorx, cursory, onscreen)
+        editor.mapviewer.menu:SetNodraw(true)
+        editor.mainmenu.menu:SetNodraw(false)
+    end
+end
+
+
+--[[
+
+]]
+function element:CreateViewport()
+    self.viewport = editor.gui.createElement("element", editor.mapviewer.menu, "mapviewer")
+
+    local size = math.floor((self.panel.frame.h - 16) / 16)
+    self.viewport:SetPos(self.panel.frame.x + 16, self.panel.frame.y + 8)
+    self.viewport:SetSize(size * 16, size * 16)
+
+    self.viewport.color_bg = Color(230, 230, 230)
+    self.viewport.color_border = Color(0, 0, 0)
+
+    self.map = {
+        x = 0,
+        y = 0,
+        zoom = 2,
+        grid = 16,
+        batch = {},
+    }
+
+    self.map.visible = self.map.grid * self.map.zoom
+    self.map.cellsize = self.viewport.w / self.map.visible
+
+    self.viewport.Draw = function(viewport)
+        render.setColor(viewport.color_bg)
+        render.drawRectFast(viewport.x, viewport.y, viewport.w, viewport.h)
+        render.setColor(viewport.color_border)
+        render.drawRectOutline(viewport.x, viewport.y, viewport.w, viewport.h)
+        self:DrawMap()
+    end
+
+    local key_left = 89
+    local key_right = 91
+    local key_up = 88
+    local key_down = 90
+
+    self:RegisterCallback("think", nil, function(cursorx, cursory, onscreen, dt, ct)
+        local xdir = (input.isKeyDown(key_right) and 1 or 0) - (input.isKeyDown(key_left) and 1 or 0)
+        local ydir = (input.isKeyDown(key_down) and 1 or 0) - (input.isKeyDown(key_up) and 1 or 0)
+
+        local speed = self.map.cellsize * dt * 1
+        self:UpdateMap(xdir * speed, ydir * speed)
+    end)
+end
+
+
+--[[
+
+]]
+function element:UpdateMap(xvel, yvel, force)
+    local dx = self.map.x
+    local dy = self.map.y
+
+    self.map.x = math.clamp(self.map.x + xvel, editor.map.col_min * 16, editor.map.col_max * 16)
+    self.map.y = math.clamp(self.map.y + yvel, editor.map.row_min * 16, editor.map.row_max * 16)
+
+    if not force then
+        if math.floor(dx) == math.floor(self.map.x) and math.floor(dy) == math.floor(self.map.y) then
+            return
+        end
+    end
+
+    self.map.visible = self.map.grid * self.map.zoom
+    self.map.cellsize = self.viewport.w / self.map.visible
+
+    self.map.batch = {}
+
+    local maprow = math.floor(self.map.y)
+    local mapcol = math.floor(self.map.x)
+
+    for y = 0, self.map.visible - 1 do
+        if not editor.map.grid[y + maprow] then
+            continue
+        end
+
+        for x = 0, self.map.visible - 1 do
+            if not editor.map.grid[y + maprow][x + mapcol] then
+                continue
+            end
+
+            table.insert(self.map.batch, {
+                x = x * self.map.cellsize,
+                y = y * self.map.cellsize,
+                dict = editor.map.grid[y + maprow][x + mapcol],
+            })
+        end
+    end
+
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+local color_white = Color(255, 255, 255)
+
+function element:DrawMap()
+    render.enableScissorRect(self.viewport.x, self.viewport.y, self.viewport.x + self.viewport.w, self.viewport.y + self.viewport.h)
+
+    local x = self.viewport.x - ((self.map.x % 1) * self.map.cellsize)
+    local y = self.viewport.y - ((self.map.y % 1) * self.map.cellsize)
+
+    render.setColor(color_white)
+    render.setMaterial(editor.tiles.texture)
+    for _, cell in pairs(self.map.batch) do
+        local icon = editor.tiles.dict[cell.dict]
+        if icon then
+            render.drawTexturedRectUVFast(x + cell.x, y + cell.y, self.map.cellsize, self.map.cellsize, icon.u0, icon.v0, icon.u1, icon.v1, true)
+        end
+    end
+    render.setMaterial()
+
+    render.disableScissorRect()
+end
+
+
+editor.mapviewer.viewer = editor.gui.createElement("mapviewer", editor.mapviewer.menu, "mapviewer")
+

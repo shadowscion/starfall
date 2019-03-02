@@ -1,0 +1,109 @@
+--@name lib/orchid/gui/elements/label
+--@author shadowscion
+--@client
+
+
+--[[
+    Label.
+]]
+local element = { name = "label" }
+
+function element:Initialize()
+    self.labeltext = {
+        text = "",
+        font = self:GetFonts()["default_font_label"],
+        color = Color(0, 0, 0),
+    }
+end
+
+
+--[[
+    Than you Sevii.
+]]
+local function wrapText(setText, font, width)
+    local text = ""
+    local line = ""
+
+    render.setFont(font)
+
+    local function doWord(word)
+        local w, h = render.getTextSize(line .. " " .. word)
+
+        if w > width then
+            text = text .. line .. "\n"
+            line = word
+        else
+            line = line .. " " .. word
+        end
+    end
+
+    for k, part in pairs(string.split(setText, " ")) do
+        local words = string.split(part, "\n")
+
+        for k, word in pairs(words) do
+            doWord(word)
+
+            if k < #words then
+                line = line .. "\n"
+            end
+        end
+    end
+
+    if line == "" then
+        text = string.sub(text, 1, #text - 1)
+    else
+        text = text .. line
+    end
+
+    return string.trim(text)
+end
+
+
+--[[
+
+]]
+function element:SetText(text, font)
+    if font then
+        self.labeltext.font = font
+    end
+    if text then
+        self.labeltext.text = text
+    end
+    self:Format()
+end
+
+
+--[[
+
+]]
+function element:SetColor(color)
+    if color then
+        self.labeltext.color = color
+        self:UpdateRT()
+    end
+end
+
+
+--[[
+
+]]
+function element:Format()
+    self.labeltext.text = wrapText(self.labeltext.text, self.labeltext.font, self.w)
+    self:UpdateRT()
+end
+
+
+--[[
+
+]]
+function element:Draw()
+    render.setFont(self.labeltext.font)
+    render.setColor(self.labeltext.color)
+    render.drawText(self.x, self.y, self.labeltext.text, self.labeltext.align or 3)
+end
+
+
+--[[
+
+]]
+return element

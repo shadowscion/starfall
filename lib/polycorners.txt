@@ -1,0 +1,157 @@
+--@name lib/polycorners
+--@author
+--@client
+
+-- original code from 
+-- https://stackoverflow.com/questions/24771828/algorithm-for-creating-rounded-corners-in-a-polygon
+local function roundedCorner(pPivot, pPrev, pNext, radius, detail)
+    local dPrev = {
+        x = pPivot.x - pPrev.x, 
+        y = pPivot.y - pPrev.y,
+    }
+    local dNext = { 
+        x = pPivot.x - pNext.x, 
+        y = pPivot.y - pNext.y,
+    }
+
+    local lPrev = math.sqrt(dPrev.x * dPrev.x + dPrev.y * dPrev.y)
+    local lNext = math.sqrt(dNext.x * dNext.x + dNext.y * dNext.y)
+
+    local diff = (math.atan2(dPrev.y, dPrev.x) - math.atan2(dNext.y, dNext.x)) / 2
+    local tan = math.abs(math.tan(diff))
+    local dist = radius / tan
+    
+    if dist > math.min(lPrev, lNext) then
+        dist = math.min(lPrev, lNext)
+        radius = dist * tan
+    end
+
+    local r = dist / lPrev
+    local pStart = { 
+        x = pPivot.x - dPrev.x * r, 
+        y = pPivot.y - dPrev.y * r,
+    }
+
+    local r = dist / lNext
+    local pStop = { 
+        x = pPivot.x - dNext.x * r, 
+        y = pPivot.y - dNext.y * r,
+    }
+
+    local dArc = { 
+        x = pPivot.x * 2 - pStart.x - pStop.x, 
+        y = pPivot.y * 2 - pStart.y - pStop.y,
+    }
+    
+    local r = math.sqrt(dist * dist + radius * radius) / math.sqrt(dArc.x * dArc.x + dArc.y * dArc.y)
+    local pArc = {
+        x = pPivot.x - dArc.x * r,
+        y = pPivot.y - dArc.y * r,
+    }
+    
+    local arcStart = math.atan2(pStart.y - pArc.y, pStart.x - pArc.x)
+    local arcStop = math.atan2(pStop.y - pArc.y, pStop.x - pArc.x)
+    
+    local arcSweep = arcStop - arcStart    
+    if arcSweep < 0 then
+        arcStart = arcStop
+        arcSweep = -arcSweep
+    end
+    if arcSweep > math.pi then
+        arcSweep = -(2 * math.pi - arcSweep)
+    end
+
+    local points = {}
+    local detail = detail or 16
+    local mod = arcSweep > 0 
+    --for i = 0, detail do
+    for i = mod and 0 or detail, mod and detail or 0, mod and 1 or -1 do
+        table.insert(points, {
+            x = pArc.x + radius * math.cos(arcStart + i * arcSweep / detail),
+            y = pArc.y + radius * math.sin(arcStart + i * arcSweep / detail),
+        })
+    end
+ 
+    return points
+end
+
+local function subivide(poly, detail, ...)
+    local new = {}
+    local radius = { ... }
+    for i, vert in ipairs(poly) do
+        if radius[i] then
+            local a = (i - 1) == 0 and #poly or (i - 1)
+            local b = (i + 1)  > #poly and 1 or (i + 1)
+            table.add(new, roundedCorner(vert, poly[a], poly[b], radius[i], detail))
+        else
+            table.insert(new, vert)
+        end
+    end
+    return new
+end
+
+
+----
+----
+local matrix = Matrix()
+local pos = Vector(200, 100, 0)
+matrix:setTranslation(pos)
+
+local width = 164
+local height = 164
+local rect = {
+    { 
+        x = 0, 
+        y = 0,
+    },
+    { 
+        x = width, 
+        y = 0,
+    },
+    { 
+        x = width, 
+        y = height,
+    },
+    { 
+        x = 0, 
+        y = height,
+    },
+}
+local test1 = subivide(rect, 4, 32, false, 32, false)
+
+local size = 64
+local tri = {
+    {
+        x = -size,
+        y = 0,
+    },
+    {
+        x = size,
+        y = size,
+        
+    },
+    { 
+        x = -size,
+        y = size,
+    },
+}
+local test2 = subivide(tri, 4, 4, 16, 16)
+
+hook.add("render", "", function()
+    
+    render.pushMatrix(matrix)
+
+    render.setRGBA(255,255,255,255)
+    render.drawPoly(test1)
+    
+    render.setRGBA(255,0,0,255)
+    render.drawPoly(test2)
+--[[    render.setRGBA(255,0,0,255)
+    for _, p in ipairs(test) do
+        render.drawRect(p.x, p.y, 3, 3)
+        render.drawText(p.x, p.y, "" .. _)
+    end]]
+    
+    render.popMatrix()
+end)
+

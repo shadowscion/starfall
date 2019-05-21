@@ -1,0 +1,236 @@
+--@name centipede
+--@author
+--@server
+
+
+-- config
+local segments = 60
+local length   = 35
+local speed    = 360 * 2
+
+local color1 = Color(128, 105, 43, 255)
+local color2 = Color(140, 93, 0, 255)
+local color3 = Color(116, 132, 0, 255)
+local color4 = Color(45, 51, 0, 255)
+
+local mat = "models/antlion/antlion_innards"
+
+
+--
+segments = math.floor(math.min(holograms.hologramsLeft() / 5, segments))
+
+local pos = chip():getPos()
+local ang = Angle()
+local seg = {}
+local gravity = 0
+
+local up = Vector(0, 0, 10)
+local dn = Vector(0, 0, -1)
+
+local function rangerOffset(length, pos, dir)
+    return trace.trace(pos, pos + dir:getNormalized() * length)
+end
+
+local function rangerDistance(ranger)
+    return (ranger.HitPos - ranger.StartPos):getLength()
+end
+
+local function toLocalAxis(this, worldAxis)
+    return this:worldToLocal(Vector(worldAxis.x, worldAxis.y, worldAxis.z) + this:getPos()) 
+end
+
+function icos(a, b, c)
+    return math.acos((a*a + b*b - c*c) / (2 * a * b)) * (180 / math.pi)
+end
+
+local function lerp(v0, v1, t)
+    return (1 - t) * v0 + t * v1
+end
+
+local function lerpColor(c1, c2, t)
+    return Color(
+        lerp(c1.r, c2.r, t), 
+        lerp(c1.g, c2.g, t), 
+        lerp(c1.b, c2.b, t)
+    )
+end
+
+local function update(hlist, dt)
+    local aim = owner():getEyeTrace()
+    
+    local realspeed = speed * dt
+    local destPos = aim.HitPos
+    
+    if pos:getDistance(destPos) > 50 then
+        pos = pos + (destPos - pos):setZ(0):getNormalized() * realspeed
+    end
+    
+    local height = seg[1].height
+    local rgbase = rangerOffset(height * 2 + realspeed, pos + Vector(0, 0, realspeed), Vector(0, 0, -1))
+    local basedist = rangerDistance(rgbase) - realspeed
+    
+    if basedist > height + 5 then
+        pos = pos + Vector(0, 0, -gravity)
+        gravity = math.min(gravity + 5, 50)
+    else
+        pos = pos - Vector(0, 0, basedist - height)
+    end
+    if basedist <= height then
+        gravity = 0
+        pos = pos + Vector(0, 0, 1) * math.max(height - basedist, 0)
+    end
+    
+    local prevdir = -(pos - seg[1].pos):getNormalized()
+    local prev = pos
+
+    for i = 1, segments do
+        local segment = seg[i]
+        
+        local newpos = segment.pos
+        local crease = (1 + (newpos - prev):setZ(0):getNormalized():dot(prevdir:setZ(0):getNormalized())) / 2
+        
+        if crease < 0.92 then
+            newpos = newpos + prevdir:setZ(0):getNormalized() * length
+        end
+        
+        local v = prev - (prev - newpos):getNormalized() * length
+        local rg = rangerOffset(segment.height * 3 + 10, v + up, dn)
+        local dist = rangerDistance(rg) - 10
+        
+        seg[i].ent:setPos(rg.HitPos)
+        
+        if dist > segment.height + 5 then
+            newpos = newpos - Vector(0, 0, segment.gravity)
+            segment.gravity = math.min(segment.gravity + 3, 50)
+        elseif dist > segment.height then
+            newpos = newpos - Vector(0, 0, dist - segment.height)
+        end
+        
+        if dist <= segment.height then
+            segment.gravity = 0
+            newpos = newpos - dn * math.max(segment.height - dist, 0)
+        end
+        
+        local dir = (prev - newpos):getNormalized()
+        v = prev - dir * length
+
+        segment.ent:setPos((prev + v) / 2)
+        if segment.pos:getDistance(v) > 0.1 then
+            segment.ent:setAngles((prev - v):getAngle())
+        end
+        
+        segment.pos = v
+        prevdir = (v - prev):getNormalized()
+        prev = v
+
+        local legs = segment.legs
+        if legs then
+            local stepTargetL = segment.ent:localToWorld(legs.localTargetL)
+            local stepTargetR = segment.ent:localToWorld(legs.localTargetR)
+            
+            if (legs.posL - stepTargetL):setZ(0):getLength() > legs.localTargetL.x * 2 then 
+                legs.posL = stepTargetL
+            end
+            if (legs.posR - stepTargetR):setZ(0):getLength() > legs.localTargetR.x * 2 then 
+                legs.posR = stepTargetR
+            end  
+            
+            local dirA = toLocalAxis(segment.ent, legs.posL - legs.l1:getPos())
+            local disA = math.min(dirA:getLength(), legs.length * 2)
+            local ang = dirA:getAngle()
+            
+            legs.l1:setAngles(segment.ent:localToWorldAngles(ang:rotateAroundAxis(ang:getRight(), -90 + icos(disA, legs.length, legs.length))))
+            legs.l2:setAngles(legs.l1:localToWorldAngles(Angle(-icos(legs.length, legs.length, disA) + 180, 0, 0)))
+
+            local dirA = toLocalAxis(segment.ent, legs.posR - legs.r1:getPos())
+            local disA = math.min(dirA:getLength(), legs.length * 2)
+            local ang = dirA:getAngle()
+
+            legs.r1:setAngles(segment.ent:localToWorldAngles(ang:rotateAroundAxis(ang:getRight(), -90 + icos(disA, legs.length, legs.length))))    
+            legs.r2:setAngles(legs.r1:localToWorldAngles(Angle(-icos(legs.length, legs.length, disA) + 180, 0, 0)))    
+        end
+    end
+end
+
+
+--
+local spawn = 0
+local ct = timer.curtime()
+local dt = 0
+
+timer.create("update", 90/1000, 0, function()
+    dt = timer.curtime() - ct
+    ct = timer.curtime()
+    
+    if spawn == segments then
+        update(hlist, dt)
+    else
+        while spawn < segments and holograms.canSpawn() do
+            spawn = spawn + 1
+            
+            local height = 5 + 4 + (1 - math.cos(math.rad(spawn / segments) * 360)) * 4
+            local body = holograms.create(pos, ang, "models/gibs/antlion_gib_large_2.mdl", Vector(length, height * 2, height * 1.5) / 12)
+            local prev = spawn > 1 and seg[spawn - 1].ent or chip()
+            
+            seg[spawn] = {
+                height = height + 12,
+                gravity = 0,
+                pos    = prev:localToWorld(Vector(-length, 0, 0)),
+                ent    = body,
+            }
+            
+            body:setPos(seg[spawn].pos)
+            body:setMaterial(mat)
+            
+            local step = math.sin(math.rad(180 * (spawn / segments)))
+            
+            body:setColor(lerpColor(color1, color2, step))
+
+            if spawn > 1 and spawn < segments then --and (spawn % 2 == 0) then
+                local legs = {}
+                
+                legs.length = height + length
+                legs.localTargetL = Vector(legs.length, legs.length * 1.25, -height - 12)
+                legs.localTargetR = Vector(legs.length, -legs.length * 1.25, -height - 12)
+                
+                legs.posR = Vector()
+                legs.posL = Vector()
+                
+                -- left
+                legs.l1 = holograms.create(body:localToWorld(Vector(0, height, 0)), ang, "models/props_c17/oildrum001.mdl", up)
+                legs.l2 = holograms.create(legs.l1:localToWorld(Vector(0, 0, legs.length)), legs.l1:localToWorldAngles(Angle(45, 0, 0)), "models/props_c17/oildrum001.mdl", up)
+
+                legs.l1:setParent(body)
+                legs.l2:setParent(legs.l1)
+                
+                legs.l1:setScale(Vector(10, 10, legs.length) / 45)
+                legs.l2:setScale(Vector(5, 5, legs.length) / 45)
+
+                -- right
+                legs.r1 = holograms.create(body:localToWorld(Vector(0, -height, 0)), ang, "models/props_c17/oildrum001.mdl", up)
+                legs.r2 = holograms.create(legs.r1:localToWorld(Vector(0, 0, legs.length)), legs.r1:localToWorldAngles(Angle(45, 0, 0)), "models/props_c17/oildrum001.mdl", up)
+
+                legs.r1:setParent(body)
+                legs.r2:setParent(legs.r1)
+                
+                legs.r1:setScale(Vector(10, 10, legs.length) / 45)
+                legs.r2:setScale(Vector(5, 5, legs.length) / 45)    
+                
+                local c1 = lerpColor(color2, color3, step)
+                local c2 = lerpColor(color3, color4, step)
+                
+                legs.l1:setColor(c1)
+                legs.r1:setColor(c1)
+                legs.l2:setColor(c2)
+                legs.r2:setColor(c2)
+                
+                legs.l1:setMaterial(mat)
+                legs.l2:setMaterial(mat)
+                legs.r1:setMaterial(mat)
+                legs.r2:setMaterial(mat)
+                
+                seg[spawn].legs = legs
+            end
+        end
+    end
+end)

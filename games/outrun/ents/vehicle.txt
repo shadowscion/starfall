@@ -1,0 +1,189 @@
+--@name games/outrun/ents/vehicle
+--@include games/outrun/res/spritesheet1.txt
+
+local sprites, texture = require("games/outrun/res/spritesheet1.txt")()
+
+local vehicle = {}
+vehicle.__index = vehicle
+
+function vehicle.create()
+    local self = {
+        color = Color(221, 255, 120),
+        screenx = 0,
+        screeny = 0,
+        rotatex = 0,
+        rotatey = 0,
+        parts = {
+        },
+    }
+    
+    self.parts.body = {
+        sprite = sprites.body[2],
+        mrtx = Matrix(),
+        mpos = Vector(),
+        mang = Angle(),
+    }
+    self.parts.body.w = self.parts.body.sprite.w
+    self.parts.body.h = self.parts.body.sprite.h
+    self.parts.body.x = -self.parts.body.w*0.5
+    self.parts.body.y = -self.parts.body.h*0.5
+    
+    self.parts.cover = {
+        sprite = sprites.enginecover[1],
+    }
+    self.parts.cover.w = self.parts.cover.sprite.w
+    self.parts.cover.h = self.parts.cover.sprite.h
+    self.parts.cover.x = -self.parts.cover.w*0.5
+    self.parts.cover.y = -self.parts.body.h + self.parts.cover.h*0.25
+    
+    self.parts.driver = {
+        sprite = sprites.driver[1],
+        x = 0,
+        y = 0,
+    }
+    self.parts.driver.w = self.parts.driver.sprite.w
+    self.parts.driver.h = self.parts.driver.sprite.h 
+            
+    self.parts.frontwheel_l = {
+        sprite = sprites.frontwheel[1],
+        x = 0,
+        y = 0,
+    }
+    self.parts.frontwheel_l.w = self.parts.frontwheel_l.sprite.w
+    self.parts.frontwheel_l.h = self.parts.frontwheel_l.sprite.h
+    
+    self.parts.frontwheel_r = {
+        sprite = sprites.frontwheel[3],
+        x = 0,
+        y = 0,
+    }
+    self.parts.frontwheel_r.w = self.parts.frontwheel_r.sprite.w
+    self.parts.frontwheel_r.h = self.parts.frontwheel_r.sprite.h     
+    
+    self.parts.rearwheel_l = {
+        sprite = sprites.rearwheel[2],
+        x = 0,
+        y = 0,
+    }
+    self.parts.rearwheel_l.w = self.parts.rearwheel_l.sprite.w
+    self.parts.rearwheel_l.h = self.parts.rearwheel_l.sprite.h
+    
+    self.parts.rearwheel_r = {
+        sprite = sprites.rearwheel[4],
+        x = 0,
+        y = 0,
+    }
+    self.parts.rearwheel_r.w = self.parts.rearwheel_r.sprite.w
+    self.parts.rearwheel_r.h = self.parts.rearwheel_r.sprite.h 
+
+    self.parts.diffuser = {
+        sprite = sprites.diffuser[1],
+        x = 0,
+        y = 0,
+    }
+    self.parts.diffuser.w = self.parts.diffuser.sprite.w
+    self.parts.diffuser.h = self.parts.diffuser.sprite.h     
+
+    self.parts.rearwing = {
+        sprite = sprites.rearwing[1],
+        x = 0,
+        y = 0,
+    }
+    self.parts.rearwing.w = self.parts.rearwing.sprite.w
+    self.parts.rearwing.h = self.parts.rearwing.sprite.h 
+
+    self.parts.frontwing = {
+        sprite = sprites.frontwing[1],
+        x = 0,
+        y = 0,
+    }
+    self.parts.frontwing.w = self.parts.frontwing.sprite.w
+    self.parts.frontwing.h = self.parts.frontwing.sprite.h 
+    
+    return setmetatable(self, vehicle)
+end
+
+function vehicle:render()
+    render.setMaterial(texture)
+    render.drawTexturedRect(0,0,512,512)
+    
+    render.setColor(self.color)
+    render.drawTexturedRectUVFast(self.parts.frontwing.x,self.parts.frontwing.y,self.parts.frontwing.w,self.parts.frontwing.h,self.parts.frontwing.sprite.u0,self.parts.frontwing.sprite.v0,self.parts.frontwing.sprite.u1,self.parts.frontwing.sprite.v1,true)
+
+    render.setRGBA(255,255,255,255)
+    render.drawTexturedRectUVFast(self.parts.frontwheel_l.x,self.parts.frontwheel_l.y,self.parts.frontwheel_l.w,self.parts.frontwheel_l.h,self.parts.frontwheel_l.sprite.u0,self.parts.frontwheel_l.sprite.v0,self.parts.frontwheel_l.sprite.u1,self.parts.frontwheel_l.sprite.v1,true)
+    render.drawTexturedRectUVFast(self.parts.frontwheel_r.x,self.parts.frontwheel_r.y,self.parts.frontwheel_r.w,self.parts.frontwheel_r.h,self.parts.frontwheel_r.sprite.u0,self.parts.frontwheel_r.sprite.v0,self.parts.frontwheel_r.sprite.u1,self.parts.frontwheel_r.sprite.v1,true)
+    render.drawTexturedRectUVFast(self.parts.driver.x,self.parts.driver.y,self.parts.driver.w,self.parts.driver.h,self.parts.driver.sprite.u0,self.parts.driver.sprite.v0,self.parts.driver.sprite.u1,self.parts.driver.sprite.v1,true)
+
+    render.setColor(self.color)
+    render.pushMatrix(self.parts.body.mrtx)
+    render.drawTexturedRectUVFast(self.parts.body.x,self.parts.body.y,self.parts.body.w,self.parts.body.h,self.parts.body.sprite.u0,self.parts.body.sprite.v0,self.parts.body.sprite.u1,self.parts.body.sprite.v1,true)
+    render.drawTexturedRectUVFast(self.parts.cover.x,self.parts.cover.y,self.parts.cover.w,self.parts.cover.h,self.parts.cover.sprite.u0,self.parts.cover.sprite.v0,self.parts.cover.sprite.u1,self.parts.cover.sprite.v1,true)
+    render.popMatrix()
+
+    render.setRGBA(255,255,255,255)
+    render.drawTexturedRectUVFast(self.parts.diffuser.x,self.parts.diffuser.y,self.parts.diffuser.w,self.parts.diffuser.h,self.parts.diffuser.sprite.u0,self.parts.diffuser.sprite.v0,self.parts.diffuser.sprite.u1,self.parts.diffuser.sprite.v1,true)
+    render.drawTexturedRectUVFast(self.parts.rearwheel_l.x,self.parts.rearwheel_l.y,self.parts.rearwheel_l.w,self.parts.rearwheel_l.h,self.parts.rearwheel_l.sprite.u0,self.parts.rearwheel_l.sprite.v0,self.parts.rearwheel_l.sprite.u1,self.parts.rearwheel_l.sprite.v1,true)
+    render.drawTexturedRectUVFast(self.parts.rearwheel_r.x,self.parts.rearwheel_r.y,self.parts.rearwheel_r.w,self.parts.rearwheel_r.h,self.parts.rearwheel_r.sprite.u0,self.parts.rearwheel_r.sprite.v0,self.parts.rearwheel_r.sprite.u1,self.parts.rearwheel_r.sprite.v1,true)
+
+    render.setColor(self.color)
+    render.drawTexturedRectUVFast(self.parts.rearwing.x,self.parts.rearwing.y,self.parts.rearwing.w,self.parts.rearwing.h,self.parts.rearwing.sprite.u0,self.parts.rearwing.sprite.v0,self.parts.rearwing.sprite.u1,self.parts.rearwing.sprite.v1,true)
+end
+
+local pi = math.pi
+local deg2rad = pi / 180
+local rad2deg = 180 / pi
+
+function vehicle:updatePlayer(dt)
+    self.screenx = 256
+    self.screeny = 256
+    self.rotatex = self.rotatex + math.clamp((input.isKeyDown(91) and 1 or 0) - (input.isKeyDown(89) and 1 or 0) - self.rotatex, -dt*6, dt*6)
+    self.rotatey = self.rotatey + math.clamp((input.isKeyDown(90) and 1 or 0) - (input.isKeyDown(88) and 1 or 0) - self.rotatey, -dt*6, dt*6)
+
+    local rx = math.sin(self.rotatex*90*deg2rad)*self.parts.body.w*0.75
+    local ry = math.sin(self.rotatey*90*deg2rad)*self.parts.body.h*0.75
+
+    self.parts.body.mpos.x = self.screenx - rx*0.125
+    self.parts.body.mpos.y = self.screeny - ry*0.25
+    self.parts.body.mang.y = -self.rotatex*2
+    self.parts.body.mrtx:setTranslation(self.parts.body.mpos)
+    self.parts.body.mrtx:setAngles(self.parts.body.mang)
+    
+    local scale = self.rotatex*2
+    self.parts.frontwheel_l.w = self.parts.frontwheel_l.sprite.w - scale
+    self.parts.frontwheel_l.h = self.parts.frontwheel_l.sprite.h - scale
+    self.parts.frontwheel_r.w = self.parts.frontwheel_r.sprite.w + scale
+    self.parts.frontwheel_r.h = self.parts.frontwheel_r.sprite.h + scale    
+    self.parts.rearwheel_l.w = self.parts.rearwheel_l.sprite.w - scale
+    self.parts.rearwheel_l.h = self.parts.rearwheel_l.sprite.h - scale
+    self.parts.rearwheel_r.w = self.parts.rearwheel_r.sprite.w + scale
+    self.parts.rearwheel_r.h = self.parts.rearwheel_r.sprite.h + scale       
+
+    self.parts.frontwheel_l.x = self.screenx - self.parts.body.w + self.parts.frontwheel_l.sprite.w*0.75 + rx*0.3 
+    self.parts.frontwheel_l.y = self.screeny - self.parts.body.h + ry*0.25
+    self.parts.frontwheel_r.x = self.screenx + self.parts.body.w - self.parts.frontwheel_r.sprite.w - self.parts.frontwheel_r.sprite.w*0.75 + rx*0.3 - scale
+    self.parts.frontwheel_r.y = self.screeny - self.parts.body.h + ry*0.25
+    
+    self.parts.rearwheel_l.x = self.screenx - self.parts.body.w - self.parts.rearwheel_l.sprite.w*0.1 - rx*0.2
+    self.parts.rearwheel_l.y = self.screeny - self.parts.body.h*0.75 - ry*0.5
+    self.parts.rearwheel_r.x = self.screenx + self.parts.body.w - self.parts.rearwheel_r.sprite.w + self.parts.rearwheel_r.sprite.w*0.1 - rx*0.2 - scale
+    self.parts.rearwheel_r.y = self.screeny - self.parts.body.h*0.75 - ry*0.5
+    
+    self.parts.diffuser.x = self.screenx - self.parts.diffuser.w*0.5 - rx*0.25
+    self.parts.diffuser.y = self.screeny - ry*0.5
+    
+    self.parts.rearwing.x = self.screenx - self.parts.rearwing.w*0.5 - rx*0.25
+    self.parts.rearwing.y = self.screeny - self.parts.body.h*1.25 - ry*0.5
+
+    self.parts.frontwing.x = self.screenx - self.parts.frontwing.w*0.5 + rx*0.25
+    self.parts.frontwing.y = self.screeny - self.parts.body.h*0.5 + ry*0.25
+    
+    self.parts.driver.x = self.screenx - self.parts.driver.w*0.5 + rx*0.125
+    self.parts.driver.y = self.screeny - self.parts.body.h + self.parts.driver.h - ry*0.25
+end
+
+function vehicle:updateAI(dt)
+
+end
+
+return vehicle

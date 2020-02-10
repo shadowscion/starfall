@@ -1,0 +1,29 @@
+--@name games/lib/e2trig
+
+local trig = {}
+
+local pi = math.pi
+local deg2rad = pi / 180
+local rad2deg = 180 / pi
+
+function trig.sin(n)
+    return math.sin(n*deg2rad)
+end
+
+function trig.cos(n)
+    return math.cos(n*deg2rad)
+end
+
+function trig.atan(n1,n2)
+    return math.atan2(n1, n2)*rad2deg
+end
+
+function trig.asin(n)
+    return math.asin(n)*rad2deg
+end
+
+function trig.acos(n)
+    return math.acos(n)*rad2deg
+end
+
+return trig

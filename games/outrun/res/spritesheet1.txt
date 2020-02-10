@@ -1,0 +1,202 @@
+--@name games/outrun/res/spritesheet1
+
+local spritesheetJSON = json.decode([[
+{
+  "body2": {
+    "v0": 0.0039,
+    "x": 76,
+    "y": 4,
+    "w": 64,
+    "u1": 0.1367,
+    "h": 32,
+    "u0": 0.0742,
+    "v1": 0.0352
+  },
+  "driver": {
+    "v0": 0.043,
+    "x": 60,
+    "y": 44,
+    "w": 16,
+    "u1": 0.0742,
+    "h": 8,
+    "u0": 0.0586,
+    "v1": 0.0508
+  },
+  "enginecover": {
+    "v0": 0.043,
+    "x": 84,
+    "y": 44,
+    "w": 20,
+    "u1": 0.1016,
+    "h": 14,
+    "u0": 0.082,
+    "v1": 0.0566
+  },
+  "rearwheel2": {
+    "v0": 0.0039,
+    "x": 148,
+    "y": 4,
+    "w": 36,
+    "u1": 0.1797,
+    "h": 40,
+    "u0": 0.1445,
+    "v1": 0.043
+  },
+  "rearwheel4": {
+    "v0": 0.0977,
+    "x": 144,
+    "y": 100,
+    "w": 36,
+    "u1": 0.1758,
+    "h": 40,
+    "u0": 0.1406,
+    "v1": 0.1367
+  },
+  "rearwheel3": {
+    "v0": 0.0508,
+    "x": 144,
+    "y": 52,
+    "w": 36,
+    "u1": 0.1758,
+    "h": 40,
+    "u0": 0.1406,
+    "v1": 0.0898
+  },
+  "body1": {
+    "v0": 0.0039,
+    "x": 4,
+    "y": 4,
+    "w": 64,
+    "u1": 0.0664,
+    "h": 32,
+    "u0": 0.0039,
+    "v1": 0.0352
+  },
+  "rearwheel1": {
+    "v0": 0.082,
+    "x": 100,
+    "y": 84,
+    "w": 36,
+    "u1": 0.1328,
+    "h": 40,
+    "u0": 0.0977,
+    "v1": 0.1211
+  },
+  "frontwheel3": {
+    "v0": 0.082,
+    "x": 36,
+    "y": 84,
+    "w": 24,
+    "u1": 0.0586,
+    "h": 32,
+    "u0": 0.0352,
+    "v1": 0.1133
+  },
+  "frontwing": {
+    "v0": 0.1211,
+    "x": 4,
+    "y": 124,
+    "w": 58,
+    "u1": 0.0605,
+    "h": 12,
+    "u0": 0.0039,
+    "v1": 0.1328
+  },
+  "frontwheel4": {
+    "v0": 0.082,
+    "x": 68,
+    "y": 84,
+    "w": 24,
+    "u1": 0.0898,
+    "h": 32,
+    "u0": 0.0664,
+    "v1": 0.1133
+  },
+  "diffuser": {
+    "v0": 0.043,
+    "x": 4,
+    "y": 44,
+    "w": 48,
+    "u1": 0.0508,
+    "h": 16,
+    "u0": 0.0039,
+    "v1": 0.0586
+  },
+  "frontwheel1": {
+    "v0": 0.043,
+    "x": 112,
+    "y": 44,
+    "w": 24,
+    "u1": 0.1328,
+    "h": 32,
+    "u0": 0.1094,
+    "v1": 0.0742
+  },
+  "rearwing1": {
+    "v0": 0.1289,
+    "x": 70,
+    "y": 132,
+    "w": 64,
+    "u1": 0.1309,
+    "h": 32,
+    "u0": 0.0684,
+    "v1": 0.1602
+  },
+  "frontwheel2": {
+    "v0": 0.082,
+    "x": 4,
+    "y": 84,
+    "w": 24,
+    "u1": 0.0273,
+    "h": 32,
+    "u0": 0.0039,
+    "v1": 0.1133
+  }
+}
+]])
+
+local sprites = {}
+sprites.frontwheel = {
+    spritesheetJSON.frontwheel1,
+    spritesheetJSON.frontwheel2,
+    spritesheetJSON.frontwheel3,
+    spritesheetJSON.frontwheel4,
+}
+sprites.rearwheel = {
+    spritesheetJSON.rearwheel1,
+    spritesheetJSON.rearwheel2,
+    spritesheetJSON.rearwheel3,
+    spritesheetJSON.rearwheel4,
+}
+sprites.body = {
+    spritesheetJSON.body1,
+    spritesheetJSON.body2,
+}
+sprites.frontwing = {
+    spritesheetJSON.frontwing,
+}
+sprites.rearwing = {
+    spritesheetJSON.rearwing1,
+}
+sprites.enginecover = {
+    spritesheetJSON.enginecover,
+}
+sprites.driver = {
+    spritesheetJSON.driver,
+}
+sprites.diffuser = {
+    spritesheetJSON.diffuser,
+}
+
+local matrl = material.create("UnlitGeneric")
+matrl.isLoaded = false
+matrl:setTextureURL("$basetexture","https://raw.githubusercontent.com/shadowscion/starfall/master/sheet.png",nil, 
+function(mat, url)
+    timer.simple(1, function()
+        mat.isLoaded = true
+    end)
+end)
+
+return function() return sprites, matrl end
+
+

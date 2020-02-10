@@ -1,0 +1,108 @@
+--@name games/lib/sfgame
+--@author shadowscion
+--@shared
+
+sfgame = {}
+
+if SERVER then
+    function sfgame.spawnScreen(model,height)
+        local pos,ang = localToWorld(Vector(0,0,height or 54),Angle(90,0,0),chip():getPos(),chip():getAngles())
+        prop.createComponent(pos,ang,"starfall_screen",model or "models/hunter/plates/plate2x2.mdl",true):linkComponent(chip())
+    end
+    return
+end
+
+sfgame.fps = 60
+sfgame.step = 1/sfgame.fps
+sfgame.time = timer.systime()
+sfgame.tick = 0
+sfgame.acc = 0
+
+function sfgame.setFPS(fps)
+    sfgame.fps = fps
+    sfgame.step = 1/sfgame.fps
+end
+
+function sfgame:update()
+    local now = timer.systime()
+    self.acc = self.acc + now - self.time
+    while self.acc > self.step do
+        self:onUpdate(self.step,self.tick)
+        self.tick = self.tick + 1
+        self.acc = self.acc - self.step
+    end
+    self.time = now
+end
+
+function sfgame:onUpdate(dt,tick)
+
+end
+
+hook.add("think","",function() sfgame:update() end)
+
+sfgame.renderer = {
+    contexts = {},
+    lookup = {},
+    colors = {
+        clear = Color(0,0,0,0),
+        white = Color(255,255,255,255),
+        black = Color(0,0,0,255),
+    },
+    debug = false,
+}
+sfgame.cursorx = -1
+sfgame.cursory = -1
+sfgame.renderer.filter = true
+
+function sfgame:addRT(name,func)
+    table.insert(self.renderer.contexts,{
+        name = name,
+        draw = function() end,
+        redraw = true,
+    })
+    self.renderer.lookup[name] = table.count(self.renderer.contexts)
+    if func then self:setRTFunction(name,func) end
+    render.createRenderTarget(name)
+    return self:getRT(name)
+end
+
+function sfgame:setRTFunction(name,func)
+    self.renderer.contexts[self.renderer.lookup[name]].draw = func
+end
+
+function sfgame:redrawRT(name)
+    self.renderer.contexts[self.renderer.lookup[name]].redraw = true
+end
+
+function sfgame:getRT(name)
+    return self.renderer.contexts[self.renderer.lookup[name]]
+end
+
+function sfgame:draw()
+    if self.renderer.filter then
+        render.setFilterMin(0)
+        render.setFilterMag(1)
+    end
+
+    local cx, cy = render.cursorPos()
+    self.cursorx = cx or -1
+    self.cursory = cy or -1
+
+    for i,context in ipairs(self.renderer.contexts) do
+        if context.redraw then
+            context.redraw = false
+            render.selectRenderTarget(context.name)
+            render.clear(self.renderer.colors.clear,true)
+            context:draw(context,sfgame)
+            render.selectRenderTarget()
+            if self.renderer.debug then
+                print(context.name .. " redraw")
+            end
+        end
+        render.setColor(self.renderer.colors.white)
+        render.setRenderTargetTexture(context.name)
+        render.drawTexturedRect(0,0,1024,1024)
+    end
+end
+
+hook.add("render","",function() sfgame:draw() end)

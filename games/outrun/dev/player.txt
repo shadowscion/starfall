@@ -1,0 +1,102 @@
+--@name games/outrun/dev/player
+--@author
+--@shared
+--@include games/lib/sfgame.txt
+--@include games/lib/e2trig.txt
+
+require("games/lib/sfgame.txt")
+
+if SERVER then
+    sfgame.spawnScreen()
+    return
+end
+
+if not hasPermission("input") then return end
+
+local e2trig = require("games/lib/e2trig.txt")
+
+sfgame.setFPS(30)
+
+local player = {
+    l_wheel_f = { sx = 0, sy = 0, sw = 24, sh = 32, rw = 24, rh = 32 },
+    r_wheel_f = { sx = 0, sy = 0, sw = 24, sh = 32, rw = 24, rh = 32 },
+    l_wheel_r = { sx = 0, sy = 0, sw = 36, sh = 40, rw = 24, rh = 32 },
+    r_wheel_r = { sx = 0, sy = 0, sw = 36, sh = 40, rw = 24, rh = 32 },  
+    body = { 
+        sx = -32, 
+        sy = -16, 
+        sw = 64, 
+        sh = 32, 
+        mtx = Matrix(), 
+        pos = Vector(), 
+        ang = Angle()
+    },  
+}
+
+sfgame:addRT("background",function(ctx,g)
+    render.setRGBA(141,141,141,255)
+    render.drawRectFast(0,0,512,512)
+end)
+
+local rt = sfgame:addRT("foreground",function(ctx,g)
+    render.setRGBA(255,255,255,255)
+    
+    -- front wheels
+    render.setRGBA(36, 36, 36, 255)
+    render.drawRectFast(player.l_wheel_f.sx, player.l_wheel_f.sy, player.l_wheel_f.rw, player.l_wheel_f.rh)
+    render.drawRectFast(player.r_wheel_f.sx, player.r_wheel_f.sy, player.r_wheel_f.rw, player.r_wheel_f.rh)
+    
+    -- body
+    render.setRGBA(255,255,255,255)
+    render.pushMatrix(player.body.mtx)
+    render.drawRectFast(player.body.sx, player.body.sy, player.body.sw, player.body.sh)
+    render.popMatrix()
+
+    -- rear wheels
+    render.setRGBA(36, 36, 36, 255)
+    render.drawRectFast(player.l_wheel_r.sx, player.l_wheel_r.sy, player.l_wheel_r.rw, player.l_wheel_r.rh)
+    render.drawRectFast(player.r_wheel_r.sx, player.r_wheel_r.sy, player.r_wheel_r.rw, player.r_wheel_r.rh)
+end)
+
+local px = 0
+function sfgame:onUpdate(dt,tick)
+    px = px + math.clamp((input.isKeyDown(91) and 1 or 0) - (input.isKeyDown(89) and 1 or 0) - px, -dt*3, dt*3)
+
+    local sx = 256 + px*(64 - player.body.sw)
+    local sy = 256
+
+    local shift = e2trig.sin(px*90)*player.body.sw*0.333
+    
+    player.body.pos.x = sx - shift*0.25
+    player.body.pos.y = sy
+    player.body.ang.y = px*3
+    player.body.mtx:setTranslation(player.body.pos)
+    player.body.mtx:setAngles(player.body.ang)
+    
+    local scale = px*2
+    
+    player.l_wheel_f.rw = player.l_wheel_f.sw + scale
+    player.l_wheel_f.rh = player.l_wheel_f.sh + scale
+    player.l_wheel_f.sx = sx - player.body.sw + player.l_wheel_f.sw + shift
+    player.l_wheel_f.sy = sy - player.l_wheel_f.sh*0.75
+
+    player.r_wheel_f.rw = player.r_wheel_f.sw - scale
+    player.r_wheel_f.rh = player.r_wheel_f.sh - scale
+    player.r_wheel_f.sx = sx + player.body.sw - player.r_wheel_f.sw - player.r_wheel_f.sw + shift + scale
+    player.r_wheel_f.sy = sy - player.r_wheel_f.sh*0.75
+
+
+    player.l_wheel_r.rw = player.l_wheel_r.sw - scale
+    player.l_wheel_r.rh = player.l_wheel_r.sh - scale
+    player.l_wheel_r.sx = sx - player.body.sw - shift*0.5
+    player.l_wheel_r.sy = sy - player.l_wheel_r.sh*0.5
+
+    player.r_wheel_r.rw = player.r_wheel_r.sw + scale
+    player.r_wheel_r.rh = player.r_wheel_r.sh + scale
+    player.r_wheel_r.sx = sx + player.body.sw - player.r_wheel_r.sw - shift*0.5 - scale
+    player.r_wheel_r.sy = sy - player.r_wheel_r.sh*0.5
+        
+    rt.redraw = true
+end
+
+

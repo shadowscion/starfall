@@ -1,0 +1,25 @@
+--@name games/outrun/dev/player3
+--@author
+--@shared
+--@include games/lib/sfgame.txt
+--@include games/outrun/ents/vehicle.txt
+
+require("games/lib/sfgame.txt")
+
+if SERVER then
+    sfgame.spawnScreen()
+    return
+end
+
+if not hasPermission("input") then return end
+if player() ~= owner() then return end
+
+sfgame.setFPS(30)
+sfgame.renderer.filter = true
+
+local vehicle = require("games/outrun/ents/vehicle.txt")
+
+sfgame:addRT("background", function(ctx, g)
+    render.setRGBA(127,255,255,255)
+    render.drawRectFast(0,0,512,512)
+end)

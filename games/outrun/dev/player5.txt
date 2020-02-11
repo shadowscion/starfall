@@ -1,0 +1,234 @@
+--@name games/outrun/dev/player5
+--@author
+--@include games/lib/sfgame.txt
+--@include games/outrun/res/spritesheet1.txt
+
+require("games/lib/sfgame.txt")
+
+if SERVER then
+    sfgame.spawnScreen()
+    return
+end
+
+if not hasPermission("input") then return end
+if not hasPermission("material.create") then return end
+
+sfgame.setFPS(30)
+sfgame.renderer.filter = true
+
+local sprites, texture = require("games/outrun/res/spritesheet1.txt")()
+
+local ent = {}
+ent.__index = ent
+
+function sfgame.createVehicle()
+    local self = {}
+    
+    self.color = Color(255, 93, 0)
+    
+    self.rotatex = 0
+    self.rotatey = 0
+    
+    self.mpos = Vector(0,0,0)
+    self.mscl = Vector(1,1,1)
+    self.matrix = Matrix()
+    self.parts = {}
+
+    self.parts.body = { mpos = Vector(), mang = Angle(), matrix = Matrix(), sprite = sprites.body[2] }
+    self.parts.body.x = -self.parts.body.sprite.w*0.5
+    self.parts.body.y = -self.parts.body.sprite.h*0.5
+    
+    self.parts.driver = { sprite = sprites.driver[1] }
+    self.parts.driver.x = -self.parts.driver.sprite.w*0.5
+    self.parts.driver.y = -self.parts.driver.sprite.h - self.parts.body.sprite.h*0.5
+    
+    self.parts.enginecover = { sprite = sprites.enginecover[1] }
+    self.parts.enginecover.x = -self.parts.enginecover.sprite.w*0.5
+    self.parts.enginecover.y = -self.parts.enginecover.sprite.h - self.parts.body.sprite.h*0.45
+
+    self.parts.wheel_fl = { x = 0, y = 0, w = 0, h = 0, t = 1, sprite = sprites.frontwheel[3] }
+    self.parts.wheel_fr = { x = 0, y = 0, w = 0, h = 0, t = 3, sprite = sprites.frontwheel[3] }
+    self.parts.wheel_rl = { x = 0, y = 0, w = 0, h = 0, t = 2, sprite = sprites.rearwheel[3] }
+    self.parts.wheel_rr = { x = 0, y = 0, w = 0, h = 0, t = 4, sprite = sprites.rearwheel[3] }
+    self.wheelscroll = 0
+    
+    self.parts.diffuser = { sprite = sprites.diffuser[1] }
+    self.parts.diffuser.x = -self.parts.diffuser.sprite.w*0.5
+    self.parts.diffuser.y = 0
+    
+    self.parts.rearwing = { sprite = sprites.rearwing[1] }
+    self.parts.rearwing.x = -self.parts.rearwing.sprite.w*0.5
+    self.parts.rearwing.y = -self.parts.rearwing.sprite.h*0.5 - self.parts.body.sprite.h*0.75
+
+    self.parts.frontwing = { sprite = sprites.frontwing[1] }
+    self.parts.frontwing.x = -self.parts.frontwing.sprite.w*0.5
+    self.parts.frontwing.y = -self.parts.frontwing.sprite.h*0.5 - self.parts.body.sprite.h*0.5
+    
+    return setmetatable(self, ent)
+end
+
+local pi = math.pi
+local deg2rad = pi / 180
+local rad2deg = 180 / pi
+
+function ent:updateParts(dt)
+    local parts = self.parts
+
+    local rx = math.sin(self.rotatex*90*deg2rad)*8
+    local ry = math.sin(self.rotatey*90*deg2rad)*2
+    
+    -- body
+    parts.body.x = -parts.body.sprite.w*0.5 - rx
+    parts.body.y = -parts.body.sprite.h*0.5 - ry*0.55
+    parts.body.mang.y = -self.rotatex*2
+    parts.body.matrix:setAngles(parts.body.mang)
+    
+    -- driver
+    parts.driver.y = -self.parts.driver.sprite.h - self.parts.body.sprite.h*0.5 - ry*0.55
+
+    -- enginecover
+    parts.enginecover.x = -parts.enginecover.sprite.w*0.5 - rx*1.5
+    parts.enginecover.y = -parts.enginecover.sprite.h - parts.body.sprite.h*0.45 - ry*0.75
+    
+    -- diffuser
+    parts.diffuser.x = -parts.diffuser.sprite.w*0.5 - rx*2
+    parts.diffuser.y = -ry*0.75
+    
+    -- rear wing
+    parts.rearwing.x = -parts.rearwing.sprite.w*0.5 - rx*2
+    parts.rearwing.y = -parts.rearwing.sprite.h*0.5 - parts.body.sprite.h*0.75 - ry*0.75
+    
+    -- front wing
+    parts.frontwing.x = -parts.frontwing.sprite.w*0.5 + rx*2
+    parts.frontwing.y = -parts.frontwing.sprite.h*0.5 - parts.body.sprite.h*0.5 + ry*2
+    
+    -- front wheels
+    parts.wheel_fl.x = -parts.body.sprite.w + parts.wheel_fl.sprite.w*0.75 + rx*3
+    parts.wheel_fl.y = -parts.wheel_fl.sprite.h*0.85 + ry*3
+    parts.wheel_fl.w = parts.wheel_fl.sprite.w
+    parts.wheel_fl.h = parts.wheel_fl.sprite.h
+    
+    parts.wheel_fr.x = parts.body.sprite.w - parts.wheel_fr.sprite.w - parts.wheel_fr.sprite.w*0.75 + rx*3
+    parts.wheel_fr.y = -parts.wheel_fr.sprite.h*0.85 + ry*3
+    parts.wheel_fr.w = parts.wheel_fr.sprite.w
+    parts.wheel_fr.h = parts.wheel_fr.sprite.h
+    
+    -- rear wheels
+    parts.wheel_rl.x = -parts.body.sprite.w - parts.wheel_rl.sprite.w*0.15 - rx*1.5
+    parts.wheel_rl.y = -parts.wheel_rl.sprite.h*0.55 - ry*1.5
+    parts.wheel_rl.w = parts.wheel_rl.sprite.w
+    parts.wheel_rl.h = parts.wheel_rl.sprite.h
+    
+    parts.wheel_rr.x = parts.body.sprite.w - parts.wheel_rr.sprite.w + parts.wheel_rr.sprite.w*0.15 - rx*1.5
+    parts.wheel_rr.y = -parts.wheel_rr.sprite.h*0.55 - ry*1.5 
+    parts.wheel_rr.w = parts.wheel_rr.sprite.w
+    parts.wheel_rr.h = parts.wheel_rr.sprite.h
+end
+
+function ent:updateWheelScroll(dt)
+    self.wheelscroll = self.wheelscroll + dt*16
+    if self.wheelscroll > 1 then
+        self.wheelscroll = self.wheelscroll - 1
+        self.parts.wheel_fl.t = math.max(1, (self.parts.wheel_fl.t + 1) % 5)
+        self.parts.wheel_fr.t = math.max(1, (self.parts.wheel_fr.t + 1) % 5)
+        self.parts.wheel_rl.t = math.max(1, (self.parts.wheel_rl.t + 1) % 5)
+        self.parts.wheel_rr.t = math.max(1, (self.parts.wheel_rr.t + 1) % 5)
+        self.parts.wheel_fl.sprite = sprites.frontwheel[self.parts.wheel_fl.t]
+        self.parts.wheel_fr.sprite = sprites.frontwheel[self.parts.wheel_fr.t]
+        self.parts.wheel_rl.sprite = sprites.rearwheel[self.parts.wheel_rl.t]
+        self.parts.wheel_rr.sprite = sprites.rearwheel[self.parts.wheel_rr.t]      
+    end
+end
+
+function ent:update(dt)
+    self.rotatex = self.rotatex + math.clamp((input.isKeyDown(91) and 1 or 0) - (input.isKeyDown(89) and 1 or 0) - self.rotatex, -dt*6, dt*6)
+    self.rotatey = self.rotatey + math.clamp((input.isKeyDown(90) and 1 or 0) - (input.isKeyDown(88) and 1 or 0) - self.rotatey, -dt*6, dt*6)
+
+    self.matrix:setScale(self.mscl)
+    self.matrix:setTranslation(self.mpos)
+    self:updateParts()
+    self:updateWheelScroll(dt)
+end
+
+function ent:renderParts()
+    local parts = self.parts
+    
+    -- front wing
+    render.pushMatrix(parts.body.matrix)   
+    render.setColor(self.color)
+    render.drawTexturedRectUVFast(parts.frontwing.x,parts.frontwing.y,parts.frontwing.sprite.w,parts.frontwing.sprite.h,parts.frontwing.sprite.u0,parts.frontwing.sprite.v0,parts.frontwing.sprite.u1,parts.frontwing.sprite.v1,true)
+    render.popMatrix()
+
+    -- front wheels
+    render.setRGBA(255,255,255,255)
+    render.drawTexturedRectUVFast(parts.wheel_fl.x,parts.wheel_fl.y,parts.wheel_fl.w,parts.wheel_fl.h,parts.wheel_fl.sprite.u0,parts.wheel_fl.sprite.v0,parts.wheel_fl.sprite.u1,parts.wheel_fl.sprite.v1,true)
+    render.drawTexturedRectUVFast(parts.wheel_fr.x,parts.wheel_fr.y,parts.wheel_fr.w,parts.wheel_fr.h,parts.wheel_fr.sprite.u0,parts.wheel_fr.sprite.v0,parts.wheel_fr.sprite.u1,parts.wheel_fr.sprite.v1,true)
+
+    -- driver
+    render.pushMatrix(parts.body.matrix)  
+    render.setRGBA(255,255,255,255)
+    render.drawTexturedRectUVFast(parts.driver.x,parts.driver.y,parts.driver.sprite.w,parts.driver.sprite.h,parts.driver.sprite.u0,parts.driver.sprite.v0,parts.driver.sprite.u1,parts.driver.sprite.v1,true)
+    
+    -- body
+    render.setColor(self.color)
+    render.drawTexturedRectUVFast(parts.body.x,parts.body.y,parts.body.sprite.w,parts.body.sprite.h,parts.body.sprite.u0,parts.body.sprite.v0,parts.body.sprite.u1,parts.body.sprite.v1,true)
+    
+    -- engine cover
+    render.drawTexturedRectUVFast(parts.enginecover.x,parts.enginecover.y,parts.enginecover.sprite.w,parts.enginecover.sprite.h,parts.enginecover.sprite.u0,parts.enginecover.sprite.v0,parts.enginecover.sprite.u1,parts.enginecover.sprite.v1,true)
+    
+    -- diffuser
+    render.setRGBA(255,255,255,255)
+    render.drawTexturedRectUVFast(parts.diffuser.x,parts.diffuser.y,parts.diffuser.sprite.w,parts.diffuser.sprite.h,parts.diffuser.sprite.u0,parts.diffuser.sprite.v0,parts.diffuser.sprite.u1,parts.diffuser.sprite.v1,true)
+    
+    -- rear wing
+    render.setColor(self.color)
+    render.drawTexturedRectUVFast(parts.rearwing.x,parts.rearwing.y,parts.rearwing.sprite.w,parts.rearwing.sprite.h,parts.rearwing.sprite.u0,parts.rearwing.sprite.v0,parts.rearwing.sprite.u1,parts.rearwing.sprite.v1,true)
+
+    render.popMatrix()
+    
+    -- rear wheels
+    render.setRGBA(255, 255, 255, 255)
+    render.drawTexturedRectUVFast(parts.wheel_rl.x,parts.wheel_rl.y,parts.wheel_rl.w,parts.wheel_rl.h,parts.wheel_rl.sprite.u0,parts.wheel_rl.sprite.v0,parts.wheel_rl.sprite.u1,parts.wheel_rl.sprite.v1,true)
+    render.drawTexturedRectUVFast(parts.wheel_rr.x,parts.wheel_rr.y,parts.wheel_rr.w,parts.wheel_rr.h,parts.wheel_rr.sprite.u0,parts.wheel_rr.sprite.v0,parts.wheel_rr.sprite.u1,parts.wheel_rr.sprite.v1,true)
+end
+
+function ent:render()
+    render.setRGBA(255,255,255,255)
+    render.setMaterial(texture)
+    render.pushMatrix(self.matrix)
+    self:renderParts()
+    render.popMatrix()
+end
+
+
+
+----
+----
+local car = sfgame.createVehicle()
+
+local scale = 2
+car.mscl.x = scale
+car.mscl.y = scale
+car.mscl.z = scale
+car.mpos.x = 256
+car.mpos.y = 256
+
+sfgame:addRT("bg",function(ctx,g)
+    render.setRGBA(167, 196, 196, 255)
+    render.drawRect(0,0,512,512)
+end)
+sfgame:addRT("sprites",function(ctx,g)
+    car:render()
+end)
+
+function sfgame:onUpdate(dt,tick)
+    car:update(dt)
+    self:redrawRT("sprites")
+end
+
+
+
+
+
+
+

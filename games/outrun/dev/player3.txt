@@ -13,7 +13,7 @@ end
 
 if not hasPermission("input") then return end
 
-sfgame.setFPS(30)
+sfgame.setFPS(60)
 sfgame.renderer.filter = true
 
 local vehicle = require("games/outrun/ents/vehicle.txt")
@@ -29,13 +29,17 @@ sfgame:addRT("background", function(ctx, g)
     render.drawRectOutline(256-32,512-64-64,62,62)
 end)
 
-local car = vehicle.create()
+
+local car1 = vehicle.create()
+
+car1.screenx = 256
+car1.screeny = 256
 
 sfgame:addRT("foreground", function(ctx, g)
-    car:render()
+    car1:render()
 end)
 
 function sfgame:onUpdate(dt)
-    car:updatePlayer(dt)
+    car1:updatePlayer(dt)
     self:redrawRT("foreground")
 end

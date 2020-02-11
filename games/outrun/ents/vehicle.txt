@@ -48,6 +48,9 @@ function vehicle.create()
         sprite = sprites.frontwheel[1],
         x = 0,
         y = 0,
+        s = 1,
+        t = 0,
+        anim = sprites.frontwheel,
     }
     self.parts.frontwheel_l.w = self.parts.frontwheel_l.sprite.w
     self.parts.frontwheel_l.h = self.parts.frontwheel_l.sprite.h
@@ -56,6 +59,9 @@ function vehicle.create()
         sprite = sprites.frontwheel[3],
         x = 0,
         y = 0,
+        s = 3,
+        t = 0,
+        anim = sprites.frontwheel,
     }
     self.parts.frontwheel_r.w = self.parts.frontwheel_r.sprite.w
     self.parts.frontwheel_r.h = self.parts.frontwheel_r.sprite.h     
@@ -64,6 +70,9 @@ function vehicle.create()
         sprite = sprites.rearwheel[2],
         x = 0,
         y = 0,
+        s = 2,
+        t = 0,
+        anim = sprites.rearwheel,
     }
     self.parts.rearwheel_l.w = self.parts.rearwheel_l.sprite.w
     self.parts.rearwheel_l.h = self.parts.rearwheel_l.sprite.h
@@ -72,6 +81,9 @@ function vehicle.create()
         sprite = sprites.rearwheel[4],
         x = 0,
         y = 0,
+        s = 4,
+        t = 0,
+        anim = sprites.rearwheel,
     }
     self.parts.rearwheel_r.w = self.parts.rearwheel_r.sprite.w
     self.parts.rearwheel_r.h = self.parts.rearwheel_r.sprite.h 
@@ -103,12 +115,20 @@ function vehicle.create()
     return setmetatable(self, vehicle)
 end
 
+local pi = math.pi
+local deg2rad = pi / 180
+local rad2deg = 180 / pi
+
 function vehicle:render()
     render.setMaterial(texture)
-    render.drawTexturedRect(0,0,512,512)
-    
     render.setColor(self.color)
     render.drawTexturedRectUVFast(self.parts.frontwing.x,self.parts.frontwing.y,self.parts.frontwing.w,self.parts.frontwing.h,self.parts.frontwing.sprite.u0,self.parts.frontwing.sprite.v0,self.parts.frontwing.sprite.u1,self.parts.frontwing.sprite.v1,true)
+
+    render.setRGBA(57, 57, 57, 255)
+    render.drawLine(self.parts.frontwheel_l.x + self.parts.frontwheel_l.w*0.5, self.parts.frontwheel_l.y + self.parts.frontwheel_l.h*0.35,self.parts.body.mpos.x, self.parts.body.mpos.y - self.parts.body.h*0.525)
+    render.drawLine(self.parts.frontwheel_l.x + self.parts.frontwheel_l.w*0.5, self.parts.frontwheel_l.y + self.parts.frontwheel_l.h*0.65,self.parts.body.mpos.x, self.parts.body.mpos.y - self.parts.body.h*0.225)
+    render.drawLine(self.parts.frontwheel_r.x + self.parts.frontwheel_r.w*0.5, self.parts.frontwheel_r.y + self.parts.frontwheel_r.h*0.35,self.parts.body.mpos.x, self.parts.body.mpos.y - self.parts.body.h*0.525)
+    render.drawLine(self.parts.frontwheel_r.x + self.parts.frontwheel_r.w*0.5, self.parts.frontwheel_r.y + self.parts.frontwheel_r.h*0.65,self.parts.body.mpos.x, self.parts.body.mpos.y - self.parts.body.h*0.225)
 
     render.setRGBA(255,255,255,255)
     render.drawTexturedRectUVFast(self.parts.frontwheel_l.x,self.parts.frontwheel_l.y,self.parts.frontwheel_l.w,self.parts.frontwheel_l.h,self.parts.frontwheel_l.sprite.u0,self.parts.frontwheel_l.sprite.v0,self.parts.frontwheel_l.sprite.u1,self.parts.frontwheel_l.sprite.v1,true)
@@ -120,7 +140,13 @@ function vehicle:render()
     render.drawTexturedRectUVFast(self.parts.body.x,self.parts.body.y,self.parts.body.w,self.parts.body.h,self.parts.body.sprite.u0,self.parts.body.sprite.v0,self.parts.body.sprite.u1,self.parts.body.sprite.v1,true)
     render.drawTexturedRectUVFast(self.parts.cover.x,self.parts.cover.y,self.parts.cover.w,self.parts.cover.h,self.parts.cover.sprite.u0,self.parts.cover.sprite.v0,self.parts.cover.sprite.u1,self.parts.cover.sprite.v1,true)
     render.popMatrix()
-
+    
+    render.setRGBA(57, 57, 57, 255)
+    render.drawLine(self.parts.rearwheel_l.x + self.parts.rearwheel_l.w*0.5, self.parts.rearwheel_l.y + self.parts.rearwheel_l.h*0.35,self.parts.body.mpos.x - self.parts.body.w*0.25, self.parts.body.mpos.y - self.parts.body.h*0.325)
+    render.drawLine(self.parts.rearwheel_l.x + self.parts.rearwheel_l.w*0.5, self.parts.rearwheel_l.y + self.parts.rearwheel_l.h*0.65,self.parts.body.mpos.x - self.parts.body.w*0.25, self.parts.body.mpos.y + self.parts.body.h*0.125)
+    render.drawLine(self.parts.rearwheel_r.x + self.parts.rearwheel_r.w*0.5, self.parts.rearwheel_r.y + self.parts.rearwheel_r.h*0.35,self.parts.body.mpos.x + self.parts.body.w*0.25, self.parts.body.mpos.y - self.parts.body.h*0.325)
+    render.drawLine(self.parts.rearwheel_r.x + self.parts.rearwheel_r.w*0.5, self.parts.rearwheel_r.y + self.parts.rearwheel_r.h*0.65,self.parts.body.mpos.x + self.parts.body.w*0.25, self.parts.body.mpos.y + self.parts.body.h*0.125)
+    
     render.setRGBA(255,255,255,255)
     render.drawTexturedRectUVFast(self.parts.diffuser.x,self.parts.diffuser.y,self.parts.diffuser.w,self.parts.diffuser.h,self.parts.diffuser.sprite.u0,self.parts.diffuser.sprite.v0,self.parts.diffuser.sprite.u1,self.parts.diffuser.sprite.v1,true)
     render.drawTexturedRectUVFast(self.parts.rearwheel_l.x,self.parts.rearwheel_l.y,self.parts.rearwheel_l.w,self.parts.rearwheel_l.h,self.parts.rearwheel_l.sprite.u0,self.parts.rearwheel_l.sprite.v0,self.parts.rearwheel_l.sprite.u1,self.parts.rearwheel_l.sprite.v1,true)
@@ -130,13 +156,19 @@ function vehicle:render()
     render.drawTexturedRectUVFast(self.parts.rearwing.x,self.parts.rearwing.y,self.parts.rearwing.w,self.parts.rearwing.h,self.parts.rearwing.sprite.u0,self.parts.rearwing.sprite.v0,self.parts.rearwing.sprite.u1,self.parts.rearwing.sprite.v1,true)
 end
 
-local pi = math.pi
-local deg2rad = pi / 180
-local rad2deg = 180 / pi
+local function wheelscroll(tbl,rate)
+    tbl.t = tbl.t + rate
+    if tbl.t > 1 then
+        tbl.t = 0
+        tbl.s = tbl.s + 1
+        if tbl.s > 4 then
+            tbl.s = 1
+        end
+        tbl.sprite = tbl.anim[tbl.s]
+    end
+end
 
 function vehicle:updatePlayer(dt)
-    self.screenx = 256
-    self.screeny = 256
     self.rotatex = self.rotatex + math.clamp((input.isKeyDown(91) and 1 or 0) - (input.isKeyDown(89) and 1 or 0) - self.rotatex, -dt*6, dt*6)
     self.rotatey = self.rotatey + math.clamp((input.isKeyDown(90) and 1 or 0) - (input.isKeyDown(88) and 1 or 0) - self.rotatey, -dt*6, dt*6)
 
@@ -148,7 +180,7 @@ function vehicle:updatePlayer(dt)
     self.parts.body.mang.y = -self.rotatex*2
     self.parts.body.mrtx:setTranslation(self.parts.body.mpos)
     self.parts.body.mrtx:setAngles(self.parts.body.mang)
-    
+
     local scale = self.rotatex*2
     self.parts.frontwheel_l.w = self.parts.frontwheel_l.sprite.w - scale
     self.parts.frontwheel_l.h = self.parts.frontwheel_l.sprite.h - scale
@@ -180,6 +212,12 @@ function vehicle:updatePlayer(dt)
     
     self.parts.driver.x = self.screenx - self.parts.driver.w*0.5 + rx*0.125
     self.parts.driver.y = self.screeny - self.parts.body.h + self.parts.driver.h - ry*0.25
+ 
+    local rate = dt*16
+    wheelscroll(self.parts.frontwheel_l,rate)
+    wheelscroll(self.parts.frontwheel_r,rate)
+    wheelscroll(self.parts.rearwheel_l,rate)
+    wheelscroll(self.parts.rearwheel_r,rate)
 end
 
 function vehicle:updateAI(dt)

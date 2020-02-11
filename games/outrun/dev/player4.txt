@@ -1,0 +1,113 @@
+--@name games/outrun/dev/player4
+--@author
+--@shared
+--@include games/lib/sfgame.txt
+--@include games/outrun/res/spritesheet1.txt
+
+require("games/lib/sfgame.txt")
+
+if SERVER then
+    sfgame.spawnScreen()
+    return
+end
+
+if not hasPermission("input") then return end
+if not hasPermission("material.create") then return end
+
+local sprites, texture = require("games/outrun/res/spritesheet1.txt")()
+
+function sfgame.createVehicle(color,ai)
+    local self = {
+        color = color or Color(255,255,255),
+        draw = true,
+        ai = ai or false,
+        x = 0, 
+        y = 0, 
+    }
+
+    self.parts = {}
+    
+    self.parts.body = {
+        sprite = sprites.body[2],
+        mtx = Matrix(),
+        pos = Vector(),
+        ang = Angle(),
+    }
+    self.parts.body.x = -self.parts.body.sprite.w*0.5
+    self.parts.body.y = -self.parts.body.sprite.h*0.5
+
+--[[
+    self.parts.frontwheel_l = {
+        sprite = sprites.frontwheel[1],
+        x = 0,
+        y = 0,
+        s = 1,
+        t = 0,
+        anim = sprites.frontwheel,
+    }
+    self.parts.frontwheel_l.w = self.parts.frontwheel_l.sprite.w
+    self.parts.frontwheel_l.h = self.parts.frontwheel_l.sprite.h
+]]
+
+
+    
+    return self
+end
+
+function sfgame.drawVehicle(self)
+    if not self.draw then
+        return
+    end
+    
+    render.pushMatrix(self.mtx)
+
+    render.setMaterial(texture)
+    render.pushMatrix(self.parts.body.mtx)
+    render.setColor(self.color)
+    render.drawTexturedRectUVFast(self.parts.body.x,self.parts.body.y,self.parts.body.sprite.w,self.parts.body.sprite.h,self.parts.body.sprite.u0,self.parts.body.sprite.v0,self.parts.body.sprite.u1,self.parts.body.sprite.v1,true)
+    render.popMatrix()
+    
+    render.popMatrix()
+end
+
+function sfgame.updateVehiclePlayer(self,dt)
+    self.parts.body.pos.x = self.x
+    self.parts.body.pos.y = self.y
+    self.parts.body.y = 0
+    self.parts.body.mtx:setTranslation(self.parts.body.pos)
+    self.parts.body.mtx:setAngles(self.parts.body.ang)
+end
+
+function sfgame.updateVehicleAI(self,dt)
+
+end
+
+function sfgame.updateVehicle(self,dt)
+    if self.ai then 
+        sfgame.updateVehicleAI(self, dt)
+    else
+        sfgame.updateVehiclePlayer(self,dt)
+    end
+end
+
+
+
+sfgame:addRT("bg",function(ctx,g)
+    render.setRGBA(167, 196, 196, 255)
+    render.drawRect(0,0,512,512)
+end)
+
+local car = sfgame.createVehicle()
+car.x = 256
+car.y = 256
+
+sfgame:addRT("sprites",function(ctx,g)
+    sfgame.drawVehicle(car)
+end)
+
+function sfgame:onUpdate(dt,tick)
+    sfgame.updateVehicle(car,dt)
+    self:redrawRT("sprites")
+end
+
+

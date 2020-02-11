@@ -38,7 +38,7 @@ function sfgame:onUpdate(dt,tick)
 
 end
 
-hook.add("think","",function() sfgame:update() end)
+--hook.add("think","",function() sfgame:update() end)
 
 sfgame.renderer = {
     contexts = {},
@@ -87,13 +87,15 @@ function sfgame:draw()
     local cx, cy = render.cursorPos()
     self.cursorx = cx or -1
     self.cursory = cy or -1
+    
+    self:update()
 
     for i,context in ipairs(self.renderer.contexts) do
         if context.redraw then
             context.redraw = false
             render.selectRenderTarget(context.name)
             render.clear(self.renderer.colors.clear,true)
-            context:draw(context,sfgame)
+            context.draw(context,self)
             render.selectRenderTarget()
             if self.renderer.debug then
                 print(context.name .. " redraw")

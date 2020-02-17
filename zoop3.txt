@@ -1,0 +1,761 @@
+--@name zoop3
+--@author
+--@shared
+
+if SERVER then
+    local pos, ang = localToWorld(Vector(0, 0, 54), Angle(90, 0, 0), chip():getPos(), chip():getAngles())
+    prop.createComponent(pos, ang, "starfall_screen", "models/hunter/plates/plate2x2.mdl", true):linkComponent(chip())
+    return
+end
+
+setName("no")
+
+------------------------------------------------
+------------------------------------------------
+local SPRITESHEET = material.create("UnlitGeneric")
+SPRITESHEET.isLoaded = false
+SPRITESHEET:setTextureURL("$basetexture", "https://raw.githubusercontent.com/shadowscion/starfall/master/gemsheet.png", nil, 
+function(mat)
+    timer.simple(1, function()
+        mat.isLoaded = true
+    end)
+end)
+
+local SPRITES = {
+    ["grid_border"] = { x = 0, y = 48, w = 16, h = 16 },
+    ["grid_dot"] = { x = 16, y = 48, w = 16, h = 16 },
+    ["grid_socket"] = { x = 32, y = 48, w = 16, h = 16 },
+    ["oneup"] = { x = 48, y = 48, w = 16, h = 16 },
+    ["bomb1"] = { x = 0, y = 0, w = 16, h = 16 },
+    ["bomb2"] = { x = 16, y = 0, w = 16, h = 16 },
+    ["g1_full"] = { x = 32, y = 0, w = 16, h = 16 },
+    ["g1_gib1"] = { x = 48, y = 0, w = 16, h = 16 },
+    ["g1_gib2"] = { x = 64, y = 0, w = 16, h = 16 },
+    ["g1_gib3"] = { x = 80, y = 0, w = 16, h = 16 },
+    ["g2_full"] = { x = 0, y = 16, w = 16, h = 16 },
+    ["g2_gib1"] = { x = 16, y = 16, w = 16, h = 16 },
+    ["g2_gib2"] = { x = 32, y = 16, w = 16, h = 16 },
+    ["g2_gib3"] = { x = 48, y = 16, w = 16, h = 16 },
+    ["g3_full"] = { x = 64, y = 16, w = 16, h = 16 },
+    ["g3_gib1"] = { x = 80, y = 16, w = 16, h = 16 },
+    ["g3_gib2"] = { x = 0, y = 32, w = 16, h = 16 },
+    ["g3_gib3"] = { x = 16, y = 32, w = 16, h = 16 },
+    ["g4_full"] = { x = 32, y = 32, w = 16, h = 16 },
+    ["g4_gib1"] = { x = 48, y = 32, w = 16, h = 16 },
+    ["g4_gib2"] = { x = 64, y = 32, w = 16, h = 16 },
+    ["g4_gib3"] = { x = 80, y = 32, w = 16, h = 16 },
+    ["s1"] = { x = 64, y = 48, w = 16, h = 16 },
+    ["s1_trail1"] = { x = 80, y = 48, w = 16, h = 16 },
+    ["s1_trail2"] = { x = 0, y = 64, w = 16, h = 16 },
+    ["s1_trail3"] = { x = 16, y = 64, w = 16, h = 16 },
+    ["s2"] = { x = 32, y = 64, w = 16, h = 16 },
+    ["s2_trail1"] = { x = 48, y = 64, w = 16, h = 16 },
+    ["s2_trail2"] = { x = 64, y = 64, w = 16, h = 16 },
+    ["s2_trail3"] = { x = 80, y = 64, w = 16, h = 16 },
+    ["s3"] = { x = 0, y = 80, w = 16, h = 16 },
+    ["s3_trail1"] = { x = 16, y = 80, w = 16, h = 16 },
+    ["s3_trail2"] = { x = 32, y = 80, w = 16, h = 16 },
+    ["s3_trail3"] = { x = 48, y = 80, w = 16, h = 16 },
+    ["s4"] = { x = 64, y = 80, w = 16, h = 16 },
+    ["s4_trail1"] = { x = 80, y = 80, w = 16, h = 16 },
+    ["s4_trail2"] = { x = 96, y = 0, w = 16, h = 16 },
+    ["s4_trail3"] = { x = 96, y = 16, w = 16, h = 16 },
+}
+
+for k, v in pairs(SPRITES) do
+    v.u0 = v.x/1024
+    v.v0 = v.y/1024
+    v.u1 = (v.x + v.w)/1024
+    v.v1 = (v.y + v.h)/1024
+end
+
+local GRID = {
+
+    { 9, 9, 9, 9, 9, 9, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3 },
+    { 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3 },
+    { 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3 },
+    { 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3 },
+    { 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0 },
+
+}
+
+
+------------------------------------------------
+------------------------------------------------
+local GAME = { inputs = {}, isValid = false }
+
+GAME.ship = {
+    skins = {
+        {
+            body = SPRITES["s1"],
+            trail = {
+                SPRITES["s1_trail1"],
+                SPRITES["s1_trail2"],
+                SPRITES["s1_trail3"],
+            }
+        },
+        {
+            body = SPRITES["s2"],
+            trail = {
+                SPRITES["s2_trail1"],
+                SPRITES["s2_trail2"],
+                SPRITES["s2_trail3"],
+            }
+        }, 
+        {
+            body = SPRITES["s3"],
+            trail = {
+                SPRITES["s3_trail1"],
+                SPRITES["s3_trail2"],
+                SPRITES["s3_trail3"],
+            }
+        }, 
+        {
+            body = SPRITES["s4"],
+            trail = {
+                SPRITES["s4_trail1"],
+                SPRITES["s4_trail2"],
+                SPRITES["s4_trail3"],
+            }
+        },      
+    },
+    matrix = Matrix(),
+    vmpos = Vector(),
+    vmrot = Angle(),
+}
+
+------------------------------------------------
+------------------------------------------------
+function GAME:Reset(fps)
+    self.score = 0
+    self.screenshake = {
+        magnitude = 0,
+        matrix = Matrix(),
+        ang = Angle(),
+    }
+    self.screenshake.matrix:setTranslation(Vector(256, 256, 0))
+    
+    self.gibs = {}
+
+    self.ship.skin = math.random(1, 4)
+    self.ship.xPos = math.random(0, 3) + 7
+    self.ship.yPos = math.random(0, 3) + 7
+    self.ship.yAng = math.random(0, 3)
+    self.ship.vmpos.x = self.ship.xPos*32 - 16
+    self.ship.vmpos.y = self.ship.yPos*32 - 16
+    self.ship.vmrot.y = self.ship.yAng*90
+    self.ship.matrix:setTranslation(self.ship.vmpos)
+    self.ship.matrix:setAngles(self.ship.vmrot)
+
+    self.grid = {}
+    for nRow = 1, 16 do
+        self.grid[nRow] = {}
+    end
+    
+    self.history = {
+        { 
+            yLast = math.random(0, 3),
+            sLast = math.random(1, 4),
+        },
+        { 
+            xLast = math.random(0, 3),
+            sLast = math.random(1, 4),
+        }, 
+        { 
+            yLast = math.random(0, 3),
+            sLast = math.random(1, 4),
+        },
+        { 
+            xLast = math.random(0, 3),
+            sLast = math.random(1, 4),
+        },
+        qLast = math.random(1, 4),
+    }
+    
+    self.redraw = { background = true, foreground = true, overlay = true }
+    
+    self:SetFPS(fps or 30)
+end
+
+function GAME:SetFPS(fps)
+    self.isValid = true
+    self.fps = fps
+    self.step = 1/self.fps
+    self.time = timer.systime()
+    self.tick = 0
+    self.acc = 0
+end
+
+function GAME:Update()
+    if not self.isValid then 
+        return 
+    end
+    if not SPRITESHEET.isLoaded then
+        return
+    end
+    local now = timer.systime()
+    self.acc = self.acc + now - self.time
+    while self.acc > self.step do
+        self:OnUpdate(self.step,self.tick)
+        self.tick = self.tick + 1
+        self.acc = self.acc - self.step
+    end
+    self.time = now
+end
+
+function GAME:PushRandomShape()
+    local qNext = self.history.qLast
+    while qNext == self.history.qLast do
+        qNext = math.random(1, 4)
+    end
+
+    local yNext
+    local xNext
+    local sNext
+    
+    if self.history[qNext].sLast <= 4 then
+        if math.random(0, 100) > 75 then
+            sNext = self.history[qNext].sLast
+        else
+            if math.random(0, 100) > 100 then
+            
+            else
+                for rollDice = 1, 4 do
+                    sNext = math.random(1, 4)
+                    if sNext ~= self.history[qNext].sLast then
+                        break
+                    end
+                end
+            end
+        end
+    else
+        sNext = math.random(1, 4)
+    end
+    
+    if math.random(0, 100) > 75 then
+        if self.history[qNext].yLast then yNext = self.history[qNext].yLast end
+        if self.history[qNext].xLast then xNext = self.history[qNext].xLast end
+    else
+        for rollDice = 1, 4 do
+            if self.history[qNext].yLast then 
+                yNext = math.random(0, 3)
+                if self.history[qNext].yLast ~= yNext then
+                    break
+                end
+            end
+            if self.history[qNext].xLast then 
+                xNext = math.random(0, 3) 
+                if self.history[qNext].xLast ~= xNext then
+                    break
+                end
+            end
+        end
+    end
+    
+    self.history.qLast = qNext
+    self.history[qNext].sLast = sNext
+    self.history[qNext].yLast = yNext
+    self.history[qNext].xLast = xNext
+    
+    if qNext == 1 then self:PushShape(yNext + 7, 1, sNext) end
+    if qNext == 2 then self:PushShape(1, xNext + 7, sNext) end
+    if qNext == 3 then self:PushShape(yNext + 7, 16, sNext) end
+    if qNext == 4 then self:PushShape(16, xNext + 7, sNext) end
+end
+
+function GAME:PushShape(nRow, nCol, shape)
+    if nRow >= 7 and nRow <= 10 then
+        if nCol == 1 then
+            for x = 6, 1, -1 do
+                if self.grid[nRow][x] then
+                    self.grid[nRow][x + 1] = self.grid[nRow][x]
+                    if x + 1 > 6 then
+                        self.gameover = true
+                    end
+                end
+            end
+            self.grid[nRow][nCol] = shape
+        elseif nCol == 16 then
+            for x = 11, 16 do
+                if self.grid[nRow][x] then
+                    self.grid[nRow][x - 1] = self.grid[nRow][x]
+                    if x - 1 < 11 then
+                        self.gameover = true
+                    end
+                end
+            end
+            self.grid[nRow][nCol] = shape
+        end
+    elseif nCol >= 7 and nCol <= 10 then
+        if nRow == 1 then
+            for y = 6, 1, -1 do
+                if self.grid[y][nCol] then
+                    self.grid[y + 1][nCol] = self.grid[y][nCol]
+                    if y + 1 > 6 then
+                        self.gameover = true
+                    end
+                end
+            end
+            self.grid[nRow][nCol] = shape
+        elseif nRow == 16 then
+            for y = 11, 16 do
+                if self.grid[y][nCol] then
+                    self.grid[y - 1][nCol] = self.grid[y][nCol]
+                    if y - 1 < 11 then
+                        self.gameover = true
+                    end
+                end
+            end  
+            self.grid[nRow][nCol] = shape      
+        end
+    end
+end
+
+function GAME:OnUpdate(dt, tick)
+    if self.gameover then
+        return
+    end
+    if self.ship.isMoving then
+        self.ship.lerp = math.min(self.ship.lerp + dt*5, 1)
+        local t = math.sin(self.ship.lerp*180*(math.pi / 180))  
+        self.ship.vmpos.x = ((1 - t)*self.ship.xPos + t*self.ship.xNew)*32 - 16
+        self.ship.vmpos.y = ((1 - t)*self.ship.yPos + t*self.ship.yNew)*32 - 16
+        self.ship.vmrot.y = (self.ship.lerp < 0.5 and self.ship.yAng or self.ship.yAng + 2)*90
+        if self.ship.kill then
+            if self.ship.lerp > 0.5 then
+                self.score = self.score + (#self.ship.kill)^2 * 100
+                self.screenshake.magnitude = self.screenshake.magnitude + #self.ship.kill
+                for _, kill in pairs(self.ship.kill) do
+                    self:CreateGib(kill.y,kill.x,self.grid[kill.y][kill.x])
+                    self.grid[kill.y][kill.x] = nil
+                end   
+                self.ship.kill = nil
+                self.redraw.foreground = true
+            end
+        end     
+        if self.ship.swapTo then
+            if self.ship.lerp > 0.5 then
+                local new = self.grid[self.ship.yNew][self.ship.xNew]
+                self.grid[self.ship.yNew][self.ship.xNew] = self.ship.skin
+                self.ship.skin = new
+                self.ship.swapTo = nil
+            end
+        end
+        if self.ship.lerp == 1 then
+            self.ship.vmpos.x = self.ship.xPos*32 - 16
+            self.ship.vmpos.y = self.ship.yPos*32 - 16
+            self.ship.vmrot.y = self.ship.yAng*90
+            self.ship.isMoving = false
+        end
+        self.ship.matrix:setTranslation(self.ship.vmpos)
+        self.ship.matrix:setAngles(self.ship.vmrot)
+        self.redraw.overlay = true
+    else
+        if tick % 100 == 0 then
+            self:PushRandomShape()
+            self.redraw.foreground = true
+        end
+    end
+    local hasGibs = false
+    for _, gib in pairs(self.gibs) do
+        gib.time = math.min(gib.time + dt, 1)
+        if gib.time == 1 then
+            self.gibs[_] = nil
+            continue
+        end
+        
+        gib.dir.y = gib.dir.y + 600*dt
+        local x = gib.pos.x + gib.dir.x*dt
+        local y = gib.pos.y + gib.dir.y*dt
+        
+        if x < 0 or x > 512 then
+            gib.dir.x = -gib.dir.x*0.5
+        end
+        if y < 0 or y > 512 then
+            gib.dir.y = -gib.dir.y*0.5
+        end
+            
+        gib.pos.x = gib.pos.x + gib.dir.x * dt
+        gib.pos.y = gib.pos.y + gib.dir.y * dt
+        gib.ang.y = gib.ang.y + gib.rot*dt
+        
+        gib.matrix:setTranslation(gib.pos)
+        gib.matrix:setAngles(gib.ang)
+        hasGibs = true
+    end
+    if hasGibs then
+        self.redraw.overlay = true
+    end
+    if self.screenshake.magnitude > 0 then
+        self.screenshake.magnitude = self.screenshake.magnitude*0.95
+        self.screenshake.ang.y = math.random(-2, 2)*self.screenshake.magnitude
+        self.screenshake.matrix:setAngles(self.screenshake.ang)
+    end
+end
+
+
+------------------------------------------------
+------------------------------------------------
+GAME.colorKeys = {
+    [1] = Color(200, 200, 200),
+    [2] = Color(159, 159, 159),
+    [3] = Color(200, 200, 200),
+    [4] = Color(159, 159, 159),
+    [5] = Color(255, 255, 255),
+}
+
+function GAME:DrawBackground()
+    render.setMaterial(SPRITESHEET)
+
+    -- border
+    render.setRGBA(57, 57, 57, 255)
+    for nRow = 1, 16 do
+        for nCol = 1, 16 do
+            if GRID[nRow][nCol] == 0 or GRID[nRow][nCol] == 9 then continue end
+            render.drawTexturedRectUVFast(nCol*32 - 32, nRow*32 - 32, 32, 32, SPRITES["grid_border"].u0, SPRITES["grid_border"].v0, SPRITES["grid_border"].u1, SPRITES["grid_border"].v1, true)        
+        end
+    end 
+    
+    -- socket
+    render.setRGBA(255,255,255,255)
+    for nRow = 1, 16 do
+        for nCol = 1, 16 do
+            if GRID[nRow][nCol] == 0 or GRID[nRow][nCol] == 9 then continue end
+            render.setColor(self.colorKeys[GRID[nRow][nCol]])
+            render.drawTexturedRectUVFast(nCol*32 - 32, nRow*32 - 32, 32, 32, SPRITES["grid_socket"].u0, SPRITES["grid_socket"].v0, SPRITES["grid_socket"].u1, SPRITES["grid_socket"].v1, true)        
+        end
+    end
+    
+    -- dot
+    render.setRGBA(255,255,255,255)
+    for nRow = 1, 16 do
+        for nCol = 1, 16 do
+            if GRID[nRow][nCol] == 9 then continue end
+            render.drawTexturedRectUVFast(nCol*32 - 32, nRow*32 - 32, 32, 32, SPRITES["grid_dot"].u0, SPRITES["grid_dot"].v0, SPRITES["grid_dot"].u1, SPRITES["grid_dot"].v1, true)        
+        end
+    end     
+end
+
+
+------------------------------------------------
+------------------------------------------------
+GAME.shapeKeys = {
+    [1] = SPRITES["g1_full"],
+    [2] = SPRITES["g2_full"],
+    [3] = SPRITES["g3_full"],
+    [4] = SPRITES["g4_full"],
+}
+
+GAME.gibKeys = {
+    [1] = { SPRITES["g1_gib1"], SPRITES["g1_gib2"], SPRITES["g1_gib3"] },
+    [2] = { SPRITES["g2_gib1"], SPRITES["g2_gib2"], SPRITES["g2_gib3"] },    
+    [3] = { SPRITES["g3_gib1"], SPRITES["g3_gib2"], SPRITES["g3_gib3"] },
+    [4] = { SPRITES["g4_gib1"], SPRITES["g4_gib2"], SPRITES["g4_gib3"] },    
+}
+
+function GAME:CreateGib(row, col, shape)
+    for _, sprite in ipairs(self.gibKeys[shape]) do
+        local dir = math.random(-45,45)
+        local gib = {
+            time = 0,
+            body = sprite,
+            matrix = Matrix(),
+            pos = Vector(col*32 - 16, row*32 - 16, 0),
+            ang = Angle(),
+            dir = Angle(0, dir - 90, 0):getForward()*math.random(300,500), 
+            rot = dir*math.random(10, 50)
+        }
+        table.insert(self.gibs, gib)
+    end
+end
+
+function GAME:DrawForeground()
+    render.setMaterial(SPRITESHEET)
+    render.setRGBA(255, 255, 255, 255)
+    for nRow = 1, 16 do
+        for nCol = 1, 16 do
+            if not self.grid[nRow][nCol] then continue end
+            local shape = self.shapeKeys[self.grid[nRow][nCol]]
+            if shape then
+                render.drawTexturedRectUVFast(nCol*32 - 32, nRow*32 - 32, 32, 32, shape.u0, shape.v0, shape.u1, shape.v1, true)   
+            end 
+        end
+    end 
+
+end
+
+
+------------------------------------------------
+------------------------------------------------
+local scoreFont = render.createFont("Roboto Mono", 32, 32, false, false, true, false, false, true)
+
+--render.createFont( font, size, weight, antialias, additive, shadow, outline, blur, extended )
+function GAME:DrawOverlay()
+    render.setRGBA(255, 255, 255, 255)
+    local score = string.format("%.6d", self.score)
+    
+    render.setFont(scoreFont)
+    local add = 8
+    render.drawText(0 + add, 0, score[1])
+    render.drawText(32 + add, 0, score[2])
+    render.drawText(64 + add, 0, score[3])
+    render.drawText(96 + add, 0, score[4])
+    render.drawText(128 + add, 0, score[5])
+    render.drawText(160 + add, 0, score[6])
+
+    render.setMaterial(SPRITESHEET)
+    local skin = self.ship.skins[self.ship.skin]
+    render.pushMatrix(self.ship.matrix)
+    if self.ship.isMoving then
+        local t = math.abs(math.sin(self.ship.lerp*360*(math.pi / 180)))
+        render.setRGBA(255,255,255,255*t)
+        render.drawTexturedRectUVFast(-16, -16, 32, 32, skin.trail[1].u0, skin.trail[1].v0, skin.trail[1].u1, skin.trail[1].v1, true)
+        render.drawTexturedRectUVFast(-16 + 32, -16, 32 + t*64, 32, skin.trail[2].u0, skin.trail[2].v0, skin.trail[2].u1, skin.trail[2].v1, true)
+        render.drawTexturedRectUVFast(-16 + 64 + t*64, -16, 32*t, 32, skin.trail[3].u0, skin.trail[3].v0, skin.trail[3].u1, skin.trail[3].v1, true)
+    end  
+    render.setRGBA(255, 255, 255, 255)
+    render.drawTexturedRectUVFast(-17, -16, 32, 32, skin.body.u0, skin.body.v0, skin.body.u1, skin.body.v1, true)  
+    render.popMatrix()
+    for _, gib in pairs(self.gibs) do
+        render.pushMatrix(gib.matrix)
+        render.setRGBA(255, 255, 255, 255 - gib.time*255)
+        render.drawTexturedRectUVFast(-17, -16, 32, 32, gib.body.u0, gib.body.v0, gib.body.u1, gib.body.v1, true)  
+        render.popMatrix()
+    end
+end
+
+------------------------------------------------
+------------------------------------------------
+local clear = Color(0,0,0,0)
+function GAME:Draw()
+    if not SPRITESHEET.isLoaded then
+        return
+    end
+    if not self.isValid then
+        return
+    end
+
+    if self.redraw.background then
+        render.selectRenderTarget("rt.background")
+        render.clear(clear, true)
+        self:DrawBackground()
+        render.selectRenderTarget()
+        self.redraw.background = false
+    end
+    render.pushMatrix(self.screenshake.matrix)
+    render.setRGBA(255,255,255,255)
+    render.setRenderTargetTexture("rt.background")
+    render.drawTexturedRect(-256, -256, 1024, 1024)   
+    render.popMatrix()
+    
+    if self.redraw.foreground then
+        render.selectRenderTarget("rt.foreground")
+        render.clear(clear, true)
+        self:DrawForeground()
+        render.selectRenderTarget()
+        self.redraw.foreground = false
+    end
+    render.pushMatrix(self.screenshake.matrix)
+    render.setRGBA(255,255,255,255)
+    render.setRenderTargetTexture("rt.foreground")
+    render.drawTexturedRect(-256, -256, 1024, 1024)   
+    render.popMatrix()
+    
+    if self.redraw.overlay then
+        render.selectRenderTarget("rt.overlay")
+        render.clear(clear, true)
+        self:DrawOverlay()
+        render.selectRenderTarget()
+        self.redraw.overlay = false
+    end
+    render.setRGBA(255,255,255,255)
+    render.setRenderTargetTexture("rt.overlay")
+    render.drawTexturedRect(0, 0, 1024, 1024)      
+end
+
+
+------------------------------------------------
+------------------------------------------------
+GAME:Reset(60)
+
+--[[
+
+GAME:PushShape(7, 1, 1)
+GAME:PushShape(7, 1, 1)
+GAME:PushShape(7, 1, 1)
+GAME:PushShape(7, 1, 1)
+
+GAME:PushShape(9, 16, 1)
+GAME:PushShape(9, 16, 1)
+GAME:PushShape(9, 16, 2)
+
+GAME:PushShape(1, 7, 1)
+GAME:PushShape(1, 7, 1)
+GAME:PushShape(1, 7, 2)
+
+
+GAME:PushShape(16, 8, 1)
+GAME:PushShape(16, 8, 1)
+GAME:PushShape(16, 8, 2)
+]]
+
+
+
+render.createRenderTarget("rt.background")
+render.createRenderTarget("rt.foreground")
+render.createRenderTarget("rt.overlay")
+
+hook.add("render","",function()
+    render.setFilterMin(0)
+    render.setFilterMag(1)
+    
+    GAME:Update()
+    GAME:Draw()
+end)
+
+function GAME:ShipInputPress(key)
+    if self.ship.isMoving then
+        return
+    end
+    if key == 79 then
+        local sFinal
+        local yFinal
+        local xFinal
+        local swapTo
+        local kill = {}
+        
+        if self.ship.yAng == 0 then
+            for x = self.ship.xPos, 1, -1 do
+                if not self.grid[self.ship.yPos][x] then
+                    continue
+                end
+                sFinal = self.grid[self.ship.yPos][x]
+                xFinal = x
+                if sFinal and (sFinal ~= self.grid[self.ship.yPos][x] or sFinal ~= self.ship.skin) then
+                    swapTo = self.grid[self.ship.yPos][x]
+                    break
+                end                
+                table.insert(kill, { x = xFinal, y = self.ship.yPos })
+            end
+            yFinal = self.ship.yPos
+        end
+        if self.ship.yAng == 1 then
+            for y = self.ship.xPos, 1, -1 do
+                if not self.grid[y][self.ship.xPos] then
+                    continue
+                end
+                sFinal = self.grid[y][self.ship.xPos]
+                yFinal = y
+                if sFinal and (sFinal ~= self.grid[y][self.ship.xPos] or sFinal ~= self.ship.skin) then
+                    swapTo = self.grid[y][self.ship.xPos]
+                    break
+                end
+                table.insert(kill, { x = self.ship.xPos, y = yFinal })
+            end
+            xFinal = self.ship.xPos
+        end
+        if self.ship.yAng == 2 then
+            for x = self.ship.xPos, 16 do
+                if not self.grid[self.ship.yPos][x] then
+                    continue
+                end
+                sFinal = self.grid[self.ship.yPos][x]
+                xFinal = x
+                if sFinal and (sFinal ~= self.grid[self.ship.yPos][x] or sFinal ~= self.ship.skin) then
+                    swapTo = self.grid[self.ship.yPos][x]
+                    break
+                end
+                table.insert(kill, { x = xFinal, y = self.ship.yPos })
+            end
+            yFinal = self.ship.yPos
+        end        
+        if self.ship.yAng == 3 then
+            for y = self.ship.xPos, 16 do
+                if not self.grid[y][self.ship.xPos] then
+                    continue
+                end
+                sFinal = self.grid[y][self.ship.xPos]
+                yFinal = y
+                if sFinal and (sFinal ~= self.grid[y][self.ship.xPos] or sFinal ~= self.ship.skin) then
+                    swapTo = self.grid[y][self.ship.xPos]
+                    break
+                end
+                table.insert(kill, { x = self.ship.xPos, y = yFinal })
+            end
+            xFinal = self.ship.xPos
+        end        
+        if sFinal then
+            self.ship.kill = kill
+            self.ship.swapTo = swapTo
+            self.ship.xNew = xFinal
+            self.ship.yNew = yFinal
+            self.ship.lerp = 0
+            self.ship.isMoving = true
+        end
+    else
+        if key == 89 then
+            if self.ship.yAng == 0 then 
+                self.ship.xPos = self.ship.xPos - 1 
+            end
+            self.ship.yAng = 0
+        elseif key == 91 then
+            if self.ship.yAng == 2 then 
+                self.ship.xPos = self.ship.xPos + 1 
+            end
+            self.ship.yAng = 2
+        elseif key == 88 then
+            if self.ship.yAng == 1 then 
+                self.ship.yPos = self.ship.yPos - 1 
+            end
+            self.ship.yAng = 1
+        elseif key == 90 then
+            if self.ship.yAng == 3 then 
+                self.ship.yPos = self.ship.yPos + 1 
+            end
+            self.ship.yAng = 3
+        end
+        self.ship.xPos = math.clamp(self.ship.xPos, 7, 10)
+        self.ship.yPos = math.clamp(self.ship.yPos, 7, 10)
+        self.ship.vmpos.x = self.ship.xPos*32 - 16
+        self.ship.vmpos.y = self.ship.yPos*32 - 16
+        self.ship.vmrot.y = self.ship.yAng*90
+        self.ship.matrix:setTranslation(self.ship.vmpos)
+        self.ship.matrix:setAngles(self.ship.vmrot)
+    end
+    self.redraw.overlay = true
+end
+
+function GAME:ShipInputRelease(key)
+
+end
+
+local inputs = {
+    [79] = "shift",
+    [89] = "left",
+    [91] = "right",
+    [88] = "up",
+    [90] = "down",
+}
+hook.add("inputPressed", "", function(key)
+    if not inputs[key] then 
+        return 
+    end
+    GAME:ShipInputPress(key)
+end)
+hook.add("inputReleased", "", function(key)
+    if not inputs[key] then 
+        return 
+    end
+    GAME:ShipInputRelease(key)
+end)

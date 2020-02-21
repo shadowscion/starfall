@@ -1,0 +1,873 @@
+--@name networkedgame
+--@author
+--@shared
+
+if SERVER then
+    ---------------------------------------------------------------
+    local pos, ang = localToWorld(Vector(0, 0, 54), Angle(90, math.round((owner():getPos() - chip():getPos()):getAngle().y/90)*90, 0), chip():getPos(), chip():getAngles())
+    prop.createComponent(pos, ang, "starfall_screen", "models/hunter/plates/plate2x2.mdl", true):linkComponent(chip())
+
+    ---------------------------------------------------------------
+    ---- SERVERSIDE NETWORKING
+    local gamesList = {}
+
+    local debug = true
+    local debugMsg = function(...)
+        print(Color(255, 0, 0), "Server-> ", Color(255, 255, 255), ...)
+    end
+
+    local function getGameTable(ply)
+        if not ply then
+            return
+        end
+        if not gamesList[ply] then
+            return
+        end
+        return gamesList[ply]
+    end
+
+    local function syncGamesList()
+        net.start("syncGamesList")
+        local count = table.count(gamesList)
+        net.writeUInt(count, 8)
+        for ply, _ in pairs(gamesList) do
+            net.writeEntity(ply)
+        end
+        net.send()
+    end
+
+    net.receive("newgame", function(len, ply)
+        if debug then debugMsg("newgame", ply) end
+        gamesList[ply] = {
+            spectators = {}
+        }
+        syncGamesList()
+    end)
+
+    net.receive("endgame", function(len, ply)
+        if gamesList[ply] then
+            if debug then debugMsg("endgame", ply) end
+            if #gamesList[ply].spectators > 0 then
+                net.start("endgame")
+                net.send(gamesList[ply].spectators)
+            end
+            gamesList[ply] = nil
+        end
+        syncGamesList()
+    end)
+
+    net.receive("syncDir", function(len, ply)
+        local tbl = getGameTable(ply)
+        if not tbl then
+            return
+        end
+        local direction = net.readUInt(8)
+        if debug then debugMsg("syncDir", direction) end
+        if not direction then
+            return
+        end
+        tbl.direction = math.clamp(direction, 1, 4)
+        if #tbl.spectators > 0 then
+            net.start("syncDir")
+            net.writeUInt(tbl.direction, 8)
+            net.send(tbl.spectators)
+        end
+    end)
+
+    net.receive("syncPos", function(len, ply)
+        local tbl = getGameTable(ply)
+        if not tbl then
+            return
+        end
+        local x = net.readUInt(8)
+        local y = net.readUInt(8)
+        if debug then debugMsg("syncPos", x, y) end
+        if not x or not y then
+            return
+        end
+        tbl.x = math.clamp(x, 7, 10)
+        tbl.y = math.clamp(y, 7, 10)
+        if #tbl.spectators > 0 then
+            net.start("syncPos")
+            net.writeUInt(tbl.x, 8)
+            net.writeUInt(tbl.y, 8)
+            net.send(tbl.spectators)
+        end
+    end)
+
+    net.receive("syncCol", function(len, ply)
+        local tbl = getGameTable(ply)
+        if not tbl then
+            return
+        end
+        local color = net.readUInt(8)
+        if debug then debugMsg("syncCol", col) end
+        if not color then
+            return
+        end
+        tbl.color = math.clamp(color, 1, 4)
+        if #tbl.spectators > 0 then
+            net.start("syncCol")
+            net.writeUInt(tbl.color, 8)
+            net.send(tbl.spectators)
+        end
+    end)
+
+    net.receive("syncScore", function(len, ply)
+        local tbl = getGameTable(ply)
+        if not tbl then
+            return
+        end
+        local score = net.readUInt(32)
+        if debug then debugMsg("syncScore", score) end
+        if not score then
+            return
+        end
+        tbl.score = math.clamp(score, 1, 4)
+        if #tbl.spectators > 0 then
+            net.start("syncScore")
+            net.writeUInt(tbl.score, 32)
+            net.send(tbl.spectators)
+        end
+    end)
+
+    net.receive("syncBoard", function(len, ply)
+        local tbl = getGameTable(ply)
+        if not tbl then
+            return
+        end
+        local board = net.readString()
+        if debug then debugMsg("syncBoard") end
+        if not board or #board ~= 256 then
+            return
+        end
+        tbl.board = board
+        if #tbl.spectators > 0 then
+            net.start("syncBoard")
+            net.writeString(tbl.board)
+            net.send(tbl.spectators)
+        end
+    end)
+
+    net.receive("syncAttack", function(len, ply)
+        local tbl = getGameTable(ply)
+        if not tbl then
+            return
+        end
+        local board = net.readString()
+        if debug then debugMsg("syncAttack") end
+        if not board or #board ~= 256 then
+            return
+        end
+        tbl.board = board
+        if #tbl.spectators > 0 then
+            net.start("syncAttack")
+            net.writeString(tbl.board)
+            net.send(tbl.spectators)
+        end
+    end)
+
+    return
+end
+
+---------------------------------------------------------------
+local function getIndex(x, y)
+    return x + (y - 1)*16
+end
+
+local function getX(index)
+    return math.floor((index - 1) % 16) + 1
+end
+
+local function getY(index)
+    return math.floor((index - 1) / 16) + 1
+end
+
+local function inrange(n, min, max)
+    return n >= min and n <= max
+end
+
+
+---------------------------------------------------------------
+---- INIT
+local cursor = { x = 0, y = 0, onScreen = false }
+function cursor:update()
+    local cx, cy = render.cursorPos()
+    self.x = cx or -1
+    self.y = cy or -1
+    if self.x == -1 or self.y == -1 then self.onScreen = false else self.onScreen = true end
+end
+
+local menuTable = {}
+render.createRenderTarget("menuRT")
+
+local gameTable = {
+    screenRefresh = { background = true, foreground = true },
+}
+render.createRenderTarget("backgroundRT")
+render.createRenderTarget("foregroundRT")
+
+
+---------------------------------------------------------------
+function gameTable:initialize(fps)
+    self:resetScreen(fps)
+    self.isInitialized = true
+end
+
+
+---------------------------------------------------------------
+function gameTable:resetScreen(fps)
+    self.fps = fps or 60
+    self.deltatime = 1 / self.fps
+    self.systime = timer.systime()
+    self.gametick = 0
+    self.acctime = 0
+    for rkey, rbool in pairs(self.screenRefresh) do
+        self.screenRefresh[rkey] = true
+    end
+end
+
+
+---------------------------------------------------------------
+function gameTable:render()
+    if not self.isInitialized then
+        self:initialize()
+        return
+    end
+    if not self.focus then
+        return
+    end
+    if self.onRender then self:onRender() end
+end
+
+
+---------------------------------------------------------------
+function gameTable:think()
+    if not self.isInitialized then
+        self:initialize()
+        return
+    end
+    if not self.focus then
+        return
+    end
+    local now = timer.systime()
+    self.acctime = self.acctime + now - self.systime
+    while self.acctime > self.deltatime do
+        if self.onThink then
+            self:onThink(self.deltatime, self.gametick)
+        end
+        self.gametick = self.gametick + 1
+        self.acctime = self.acctime - self.deltatime
+    end
+    self.systime = now
+end
+
+
+---------------------------------------------------------------
+function gameTable:onQuit()
+    self.isPaused = false
+    self.focus = false
+end
+
+
+---------------------------------------------------------------
+function gameTable:localGame()
+    self:initialize()
+
+    self.type = "local"
+    self.isPaused = false
+    self.scorenumber = 0
+    self.player = {
+        x = math.random(7, 10),
+        y = math.random(7, 10),
+        direction = math.random(1, 4),
+        color = math.random(1, 4),
+        matrix = Matrix(),
+        pos = Vector(),
+    }
+    self.player.pos.x = self.player.x*32
+    self.player.pos.y = self.player.y*32
+    self.player.matrix:setTranslation(self.player.pos)
+
+    self.focus = true
+end
+
+
+---------------------------------------------------------------
+local clear = Color(0, 0, 0, 0)
+function gameTable:onRender()
+    if self.screenRefresh.background then
+        self.screenRefresh.background = false
+        render.selectRenderTarget("backgroundRT")
+        render.clear(clear, true)
+        self:drawBackground()
+        render.selectRenderTarget()
+    end
+    if self.screenRefresh.foreground then
+        self.screenRefresh.foreground = false
+        render.selectRenderTarget("foregroundRT")
+        render.clear(clear, true)
+        self:drawForeground()
+        render.selectRenderTarget()
+    end
+    if self.isPaused then
+        render.setRGBA(103, 103, 103, 100)
+        for i = 0, 6 do
+            local sign = (i % 2 == 0 and -i or i)
+            render.setRenderTargetTexture("backgroundRT")
+            render.drawTexturedRect(sign, sign, 1024, 1024)
+            render.setRenderTargetTexture("foregroundRT")
+            render.drawTexturedRect(sign, sign, 1024, 1024)
+        end
+    else
+        render.setRGBA(255, 255, 255, 255)
+        render.setRenderTargetTexture("backgroundRT")
+        render.drawTexturedRect(0, 0, 1024, 1024)
+        render.setRenderTargetTexture("foregroundRT")
+        render.drawTexturedRect(0, 0, 1024, 1024)
+    end
+end
+
+
+---------------------------------------------------------------
+function gameTable:drawBackground()
+    render.setFont("Default")
+    for index = 1, 256 do
+        local x = getX(index)
+        local y = getY(index)
+
+        render.setRGBA(255, 255, 255, 255)
+        render.drawRectFast(x*32 - 32, y*32 - 32, 30, 30)
+
+        render.setRGBA(105, 105, 105, 255)
+        render.drawText(x*32 - 16, y*32 - 16, index .. "", 1)
+    end
+end
+
+
+---------------------------------------------------------------
+function gameTable:drawForeground()
+    render.pushMatrix(self.player.matrix)
+
+    render.setRGBA(0, 29, 255, 255)
+    render.drawRectFast(-32, -32, 16, 16)
+    render.setFont("Default")
+    render.setRGBA(255, 0, 0, 255)
+    render.drawText(-16, -32, string.format("d:%d\nx:%d\ny:%d\nn:%d", self.player.direction, self.player.x, self.player.y, getIndex(self.player.x, self.player.y)))
+
+    local x, y
+    if self.player.direction == 1 then
+        x = 4
+        y = 8
+    end
+    if self.player.direction == 2 then
+        x = 8
+        y = 4
+    end
+    if self.player.direction == 3 then
+        x = 12
+        y = 8
+    end
+    if self.player.direction == 4 then
+        x = 8
+        y = 12
+    end
+
+    render.drawRectFast(-32 + x - 2, -32 + y - 2, 4, 4)
+    render.popMatrix()
+end
+
+
+---------------------------------------------------------------
+function gameTable:onKey(keyCode, keyName)
+    if not self.focus then
+        return
+    end
+    if self.isPaused then
+        return
+    end
+    if keyName == "pause" then
+        self.isPaused = true
+        menuTable.focus = true
+        menuTable.state = "paused"
+        menuTable.option = 0
+        menuTable:resetFlash()
+        return
+    end
+    if self.type ~= "local" then
+        return
+    end
+    if keyName == "up" then
+        if self.player.direction == 2 then
+            self:movePlayer(0, -1)
+            return
+        end
+        self:turnPlayer(2)
+        return
+    elseif keyName == "down" then
+        if self.player.direction == 4 then
+            self:movePlayer(0, 1)
+            return
+        end
+        self:turnPlayer(4)
+        return
+    elseif keyName == "left" then
+        if self.player.direction == 1 then
+            self:movePlayer(-1, 0)
+            return
+        end
+        self:turnPlayer(1)
+        return
+    elseif keyName == "right" then
+        if self.player.direction == 3 then
+            self:movePlayer(1, 0)
+            return
+        end
+        self:turnPlayer(3)
+        return
+    end
+end
+
+
+---------------------------------------------------------------
+function gameTable:setPlayerPos(x, y)
+    self.player.x = x
+    self.player.y = y
+    self.player.pos.x = x*32
+    self.player.pos.y = y*32
+    self.player.matrix:setTranslation(self.player.pos)
+    self.screenRefresh.foreground = true
+    if self.type == "local" then
+        self:syncPosition()
+    end
+end
+
+function gameTable:movePlayer(x, y)
+    local x = math.clamp(self.player.x + x, 7, 10)
+    local y = math.clamp(self.player.y + y, 7, 10)
+    if self.player.x ~= x or self.player.y ~= y then
+        self:setPlayerPos(x, y)
+    end
+end
+
+
+---------------------------------------------------------------
+function gameTable:setPlayerDirection(direction)
+    self.player.direction = direction
+    self.screenRefresh.foreground = true
+    if self.type == "local" then
+        self:syncDirection()
+    end
+end
+
+function gameTable:turnPlayer(direction)
+    local direction = math.clamp(direction, 1, 4)
+    if self.player.direction  ~= direction then
+        self:setPlayerDirection(direction)
+    end
+end
+
+
+---------------------------------------------------------------
+---- GAME MENU
+function menuTable:initialize()
+    self.gameslist = {}
+    self.isInitialized = true
+    self.flashtime = timer.curtime()
+    self.ticktock = true
+    self.option = 0
+    self.refresh = true
+    self.state = "main"
+end
+
+
+---------------------------------------------------------------
+function menuTable:think()
+    if not self.isInitialized then
+        self:initialize()
+        return
+    end
+    if not self.focus then
+        return
+    end
+    if self.onThink then self:onThink() end
+end
+
+
+---------------------------------------------------------------
+function menuTable:render()
+    if not self.isInitialized then
+        self:initialize()
+        return
+    end
+    if not self.focus then
+        return
+    end
+    if self.onRender then self:onRender() end
+end
+
+
+---------------------------------------------------------------
+local clear = Color(0, 0, 0, 0)
+function menuTable:onRender()
+    if self.refresh then
+        self.refresh = false
+        render.selectRenderTarget("menuRT")
+        render.clear(clear, true)
+        self:draw()
+        render.selectRenderTarget()
+    end
+    render.setRGBA(255, 255, 255, 255)
+    render.setRenderTargetTexture("menuRT")
+    render.drawTexturedRect(0, 0, 1024, 1024)
+end
+
+
+---------------------------------------------------------------
+function menuTable:onThink()
+    if timer.curtime() - self.flashtime > 0.5 then
+        self.flashtime = timer.curtime()
+        if self.ticktock then
+            self.ticktock = false
+        else
+            self.ticktock = true
+        end
+        self.refresh = true
+    end
+end
+
+
+---------------------------------------------------------------
+function menuTable:resetFlash()
+    self.ticktock = false
+    self.flashtime = timer.curtime()
+    self.refresh = true
+end
+
+
+---------------------------------------------------------------
+local color1 = Color(255, 255, 255, 255)
+local color2 = Color(255, 255, 0, 255)
+local font1 = render.createFont("Akbar", 32, 32, false, false, true, false, false, false)
+
+function menuTable:draw()
+    if self.state == "main" then
+        render.setFont(font1)
+        local color = self.ticktock and color1 or color2
+        render.setColor(self.option == 0 and color or color1)
+        render.drawText(256, 256 - 32, "NEW GAME", 1)
+        render.setColor(self.option == 1 and color or color1)
+        render.drawText(256, 256, string.format("SPECTATE (%d)", #self.gameslist), 1)
+        return
+    elseif self.state == "spectate" then
+        render.setFont(font1)
+        local color = self.ticktock and color1 or color2
+        local y = 32
+        for i, ply in ipairs(self.gameslist) do
+            render.setColor(self.option == i and color or color1)
+            render.drawText(256, y, ply:getName(), 1)
+            y = y + 32
+        end
+        render.setColor(self.option == 0 and color or color1)
+        render.drawText(256, 512 - 32, "MAIN MENU", 1)
+        return
+    elseif self.state == "paused" then
+        render.setFont(font1)
+        local color = self.ticktock and color1 or color2
+        render.setColor(self.option == 0 and color or color1)
+        render.drawText(256, 256 - 32, "RESUME", 1)
+        render.setColor(self.option == 1 and color or color1)
+        render.drawText(256, 256, "QUIT", 1)
+    end
+end
+
+
+---------------------------------------------------------------
+function menuTable:onNewgame()
+    net.start("newgame")
+    net.send()
+    gameTable:localGame()
+    self.focus = false
+end
+
+function menuTable:onSpectate()
+
+end
+
+function menuTable:onResume()
+    self.focus = false
+    gameTable.isPaused = false
+end
+
+function menuTable:onQuit()
+    net.start("endgame")
+    net.send()
+    gameTable:onQuit()
+    self.state = "main"
+    self.option = 0
+    self:resetFlash()
+end
+
+
+---------------------------------------------------------------
+function menuTable:onKey(keyCode, keyName)
+    if not self.focus then
+        return
+    end
+    if self.state == "main" then
+        if keyName == "up" then
+            self.option = self.option - 1
+            if self.option < 0 then
+                self.option = 1
+            end
+            self:resetFlash()
+            return
+        elseif keyName == "down" then
+            self.option = self.option + 1
+            if self.option > 1 then
+                self.option = 0
+            end
+            self:resetFlash()
+            return
+        elseif keyName == "enter" then
+            if self.option == 0 then
+                self:onNewgame()
+                return
+            elseif self.option == 1 then
+                self.state = "spectate"
+                self.option = 0
+                self:resetFlash()
+                return
+            end
+        end
+        return
+    elseif self.state == "spectate" then
+        if keyName == "up" then
+            self.option = self.option - 1
+            if self.option < 0 then
+                self.option = #self.gameslist
+            end
+            self:resetFlash()
+            return
+        elseif keyName == "down" then
+            self.option = self.option + 1
+            if self.option > #self.gameslist then
+                self.option = 0
+            end
+            self:resetFlash()
+            return
+        elseif keyName == "enter" then
+            if self.option == 0 then
+                self.state = "main"
+                self.option = 0
+                self:resetFlash()
+                return
+            else
+                self:onSpectate()
+                return
+            end
+        end
+        return
+    elseif self.state == "paused" then
+        if keyName == "up" then
+            self.option = self.option - 1
+            if self.option < 0 then
+                self.option = 1
+            end
+            self:resetFlash()
+            return
+        elseif keyName == "down" then
+            self.option = self.option + 1
+            if self.option > 1 then
+                self.option = 0
+            end
+            self:resetFlash()
+            return
+        elseif keyName == "enter" then
+            if self.option == 0 then
+                self:onResume()
+                return
+            elseif self.option == 1 then
+                self:onQuit()
+                return
+            end
+        end
+        return
+    end
+end
+
+
+---------------------------------------------------------------
+---- HOOKS
+menuTable.refresh = true
+menuTable.focus = true
+menuTable:initialize()
+
+hook.add("render", "", function()
+    cursor:update()
+    gameTable:render()
+    menuTable:render()
+end)
+
+hook.add("think", "", function()
+    gameTable:think()
+    menuTable:think()
+end)
+
+local menuKeys = {
+    [79] = "enter",
+    [80] = "enter",
+    [89] = "left",
+    [91] = "right",
+    [88] = "up",
+    [90] = "down",
+}
+
+hook.add("inputPressed", "menuKeys", function(keyCode)
+    if not cursor.onScreen then return end
+    if not menuKeys[keyCode] then
+        return
+    end
+    menuTable:onKey(keyCode, menuKeys[keyCode])
+end)
+
+local gameKeys = {
+    [79] = "enter",
+    [80] = "enter",
+    [81] = "pause",
+    [89] = "left",
+    [91] = "right",
+    [88] = "up",
+    [90] = "down",
+}
+
+hook.add("inputPressed", "gameKeys", function(keyCode)
+    if not cursor.onScreen then return end
+    if not gameKeys[keyCode] then
+        return
+    end
+    gameTable:onKey(keyCode, gameKeys[keyCode])
+end)
+
+
+---------------------------------------------------------------
+---- CLIENTSIDE NETWORKING
+function gameTable:syncDirection()
+    if not self.player or not self.player.direciton then
+        return
+    end
+    net.start("syncDir")
+    net.writeUInt(self.player.direction, 8)
+    net.send()
+end
+
+function gameTable:syncPosition()
+    if not self.player or not self.player.x or not self.player.y then
+        return
+    end
+    net.start("syncPos")
+    net.writeUInt(self.player.x, 8)
+    net.writeUInt(self.player.y, 8)
+    net.send()
+end
+
+function gameTable:syncColor()
+    if not self.player or not self.player.color then
+        return
+    end
+    net.start("syncCol")
+    net.writeUInt(self.player.color, 8)
+    net.send()
+end
+
+function gameTable:syncScore()
+    if not self.scorenumber then
+        return
+    end
+    net.start("syncScore")
+    net.writeUInt(self.scorenumber, 32)
+    net.send()
+end
+
+function gameTable:syncBoard()
+    if not self.board then
+        return
+    end
+    net.start("syncBoard")
+    net.writeString(table.concat(self.board))
+    net.send()
+end
+
+function gameTable:syncAttack()
+    if not self.board then
+        return
+    end
+    net.start("syncAttack")
+    net.writeString(table.concat(self.board))
+    net.send()
+end
+
+net.receive("syncDir", function(len, ply)
+    if not gameTable.player then
+        return
+    end
+    local direction = net.readUInt(8)
+    if not direction then
+        return
+    end
+    gameTable.player.direction = direction
+end)
+
+net.receive("syncPos", function(len, ply)
+    if not gameTable.player then
+        return
+    end
+    local x = net.readUInt(8)
+    local y = net.readUInt(8)
+    if not x or not y then
+        return
+    end
+    gameTable.player.x = x
+    gameTable.player.y = y
+end)
+
+net.receive("syncCol", function(len, ply)
+    if not gameTable.player then
+        return
+    end
+    local color = net.readUInt(8)
+    if not color then
+        return
+    end
+    gameTable.player.color = color
+end)
+
+net.receive("syncScore", function(len, ply)
+    local score = net.readUInt(32)
+    if not score then
+        return
+    end
+    gameTable.scorenumber = score
+end)
+
+net.receive("syncBoard", function(len, ply)
+    local board = net.readString()
+    if not board or #board ~= 256 then
+        return
+    end
+    for n = 1, 256 do
+        gameTable.board[n] = tonumber(board[n])
+    end
+end)
+
+net.receive("syncAttack", function(len, ply)
+    local board = net.readString()
+    if not board or #board ~= 256 then
+        return
+    end
+    for n = 1, 256 do
+        gameTable.board[n] = tonumber(board[n])
+    end
+    gameTable:queuePlayerAttack()
+end)
+

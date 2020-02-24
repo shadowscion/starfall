@@ -1,0 +1,68 @@
+--@name games/slimetime/source/cl_init
+--@author shadowscion
+--@client
+--@includedir games/slimetime/source/modules
+--@includedir games/slimetime/source/resources
+--@includedir games/slimetime/source/game
+
+local glib = glib
+
+-- resource
+requiredir("games/slimetime/source/resources")
+
+-- core
+require("games/slimetime/source/modules/network.txt")
+require("games/slimetime/source/modules/menu.txt")
+require("games/slimetime/source/modules/engine.txt")
+
+-- game
+requiredir("games/slimetime/source/game")
+
+-- update hook
+glib.systime = timer.systime()
+function glib:resetTime()
+    glib.systime = timer.systime()
+end
+
+local fps = 60
+local deltatime = 1 / fps
+local gametick = 0
+local acctime = 0
+
+hook.add("think", "glibthink", function()
+    local now = timer.systime()
+    acctime = acctime + now - glib.systime
+    while acctime > deltatime do
+        if glib.onThink then 
+            glib:updateScreenshake(deltatime)
+            glib:onThink(deltatime, gametick)
+        end
+        gametick = gametick + 1
+        acctime = acctime - deltatime
+    end
+    glib.systime = now
+end)
+
+-- render hook
+hook.add("render", "glibdraw", function()
+    if not glib.spritesheet.isLoaded then return end
+    glib:updateCursor()
+    glib:drawGame()
+    glib:drawMenu()
+end)
+
+-- key hook
+hook.add("inputPressed", "glibinput", function(keyCode)
+    if glib.game.inputs[keyCode] then
+        glib:onKeyGame(keyCode, glib.game.inputs[keyCode])
+    end
+    if glib.menu.inputs[keyCode] then
+        if not glib.cursor.onScreen then return end
+        glib:onKeyMenu(keyCode, glib.menu.inputs[keyCode])
+    end
+end)
+
+glib:createDummyGames()
+
+--timer.simple(10, function() glib:onMenuQuit() end)
+

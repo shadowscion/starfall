@@ -1,0 +1,34 @@
+--@name games/slimetime/source/modules/network
+--@author shadowscion
+--@client
+
+local glib = glib
+
+-- get server game list
+net.receive("netSyncList", function()
+    glib.menu.refresh = true
+    glib.menu.streamlist = {}
+    local num = net.readUInt(16)
+    for i = 1, num do
+        local ply = net.readEntity()
+        if not isValid(ply) or ply == player() then continue end
+        table.insert(glib.menu.streamlist, ply)
+    end
+end)
+
+-- start transmitting game data
+net.receive("netHook", function()
+    glib.isNetworked = true
+    glib.viewerCount = net.readUInt(16)
+end)
+
+-- stop transmitting game data
+net.receive("netUnhook", function()
+    glib.isNetworked = false
+    glib.viewerCount = 0
+end)
+
+--
+net.receive("netGameover", function()
+    glib:onGameover()
+end)

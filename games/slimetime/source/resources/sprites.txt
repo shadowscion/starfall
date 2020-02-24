@@ -1,0 +1,101 @@
+--@name games/slimetime/source/resources/sprites
+--@author shadowscion
+--@client
+
+local glib = glib
+
+glib.spritesheet = material.create("UnlitGeneric")
+glib.spritesheet.isLoaded = false
+glib.spritesheet:setTextureURL("$basetexture", "https://raw.githubusercontent.com/shadowscion/starfall/master/slimes.png", nil,
+function(mat)
+    timer.simple(1, function()
+        mat.isLoaded = true
+    end)
+end)
+
+glib.sprites = {
+    ["background"] = { x = 0, y = 0, w = 32, h = 32 },
+    ["bomb1"] = { x = 32, y = 0, w = 32, h = 32 },
+    ["bomb2"] = { x = 64, y = 0, w = 32, h = 32 },
+    ["border"] = { x = 96, y = 0, w = 32, h = 32 },
+    ["dot"] = { x = 128, y = 0, w = 32, h = 32 },
+    ["key_alt"] = { x = 160, y = 0, w = 64, h = 32 },
+    ["key_down"] = { x = 0, y = 32, w = 32, h = 32 },
+    ["key_left"] = { x = 32, y = 32, w = 32, h = 32 },
+    ["key_right"] = { x = 64, y = 32, w = 32, h = 32 },
+    ["key_shift"] = { x = 96, y = 32, w = 64, h = 32 },
+    ["key_up"] = { x = 160, y = 32, w = 32, h = 32 },
+    ["marker"] = { x = 192, y = 32, w = 32, h = 32 },
+    ["oneup"] = { x = 0, y = 64, w = 32, h = 32 },
+    ["s1d"] = { x = 32, y = 64, w = 32, h = 32 },
+    ["s1e1"] = { x = 64, y = 64, w = 32, h = 32 },
+    ["s1l"] = { x = 96, y = 64, w = 32, h = 32 },
+    ["s1r"] = { x = 128, y = 64, w = 32, h = 32 },
+    ["s1t1"] = { x = 160, y = 64, w = 32, h = 32 },
+    ["s1t2"] = { x = 192, y = 64, w = 32, h = 32 },
+    ["s1t3"] = { x = 0, y = 96, w = 32, h = 32 },
+    ["s1t4"] = { x = 32, y = 96, w = 32, h = 32 },
+    ["s1u"] = { x = 64, y = 96, w = 32, h = 32 },
+    ["s2d"] = { x = 96, y = 96, w = 32, h = 32 },
+    ["s2e1"] = { x = 128, y = 96, w = 32, h = 32 },
+    ["s2l"] = { x = 160, y = 96, w = 32, h = 32 },
+    ["s2r"] = { x = 192, y = 96, w = 32, h = 32 },
+    ["s2t1"] = { x = 0, y = 128, w = 32, h = 32 },
+    ["s2t2"] = { x = 32, y = 128, w = 32, h = 32 },
+    ["s2t3"] = { x = 64, y = 128, w = 32, h = 32 },
+    ["s2t4"] = { x = 96, y = 128, w = 32, h = 32 },
+    ["s2u"] = { x = 128, y = 128, w = 32, h = 32 },
+    ["s3d"] = { x = 160, y = 128, w = 32, h = 32 },
+    ["s3e1"] = { x = 192, y = 128, w = 32, h = 32 },
+    ["s3l"] = { x = 0, y = 160, w = 32, h = 32 },
+    ["s3r"] = { x = 32, y = 160, w = 32, h = 32 },
+    ["s3t1"] = { x = 64, y = 160, w = 32, h = 32 },
+    ["s3t2"] = { x = 96, y = 160, w = 32, h = 32 },
+    ["s3t3"] = { x = 128, y = 160, w = 32, h = 32 },
+    ["s3t4"] = { x = 160, y = 160, w = 32, h = 32 },
+    ["s3u"] = { x = 192, y = 160, w = 32, h = 32 },
+    ["s4d"] = { x = 0, y = 192, w = 32, h = 32 },
+    ["s4e1"] = { x = 32, y = 192, w = 32, h = 32 },
+    ["s4l"] = { x = 64, y = 192, w = 32, h = 32 },
+    ["s4r"] = { x = 96, y = 192, w = 32, h = 32 },
+    ["s4t1"] = { x = 128, y = 192, w = 32, h = 32 },
+    ["s4t2"] = { x = 160, y = 192, w = 32, h = 32 },
+    ["s4t3"] = { x = 192, y = 192, w = 32, h = 32 },
+    ["s4t4"] = { x = 224, y = 0, w = 32, h = 32 },
+    ["s4u"] = { x = 224, y = 32, w = 32, h = 32 },
+}
+
+for k, v in pairs(glib.sprites) do
+    v.u0 = v.x/1024
+    v.v0 = v.y/1024
+    v.u1 = (v.x + v.w)/1024
+    v.v1 = (v.y + v.h)/1024
+end
+
+glib.shapes = {
+    [1] = "s1e1",
+    [2] = "s2e1",
+    [3] = "s3e1",
+    [4] = "s4e1",
+}
+
+glib.playerColors = {
+    [1] = { "s1l", "s1u", "s1r", "s1d" },
+    [2] = { "s2l", "s2u", "s2r", "s2d" },
+    [3] = { "s3l", "s3u", "s3r", "s3d" },
+    [4] = { "s4l", "s4u", "s4r", "s4d" },
+}
+
+glib.playerTrails = {
+    [1] = { "s1t1", "s1t2", "s1t3", "s1t4" },
+    [2] = { "s2t1", "s2t2", "s2t3", "s2t4" },
+    [3] = { "s3t1", "s3t2", "s3t3", "s3t4" },
+    [4] = { "s4t1", "s4t2", "s4t3", "s4t4" },
+}
+
+for i, col in ipairs(glib.playerColors) do
+    for _, sp in ipairs(col) do
+        if not glib.sprites[sp] then print(sp) end
+    end
+end
+

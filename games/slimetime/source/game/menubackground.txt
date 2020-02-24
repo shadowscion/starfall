@@ -1,0 +1,78 @@
+--@name games/slimetime/source/game/menubackground
+--@author
+--@shared
+
+local glib = glib
+
+local textswap = 1
+local infotext = {
+    "Game Controls\n    move - ARROW KEYS\n    attack - SHIFT\n    pause - ALT",
+    "Game Objective\n    - prevent tiles from\n    reaching the center\n    - clear same colored tiles"
+}
+glib.menu.infotext = infotext[textswap]
+
+timer.create("updateInfoText", 5, 0, function()
+    textswap = textswap + 1
+    if textswap > #infotext then
+        textswap = 1
+    end
+    glib.menu.infotext = infotext[textswap]
+    glib.menu.refresh = true
+end)
+
+glib.menu.background = { x = 0, y = 0, r = 3, c = 1, incX = 1, incY = 1 }
+
+function glib.menu.background:update()
+    self.x = self.x + self.incX
+    if self.incX == 1 and self.x > 3 then
+        self.incX = -1
+        self.x = self.x + self.incX
+        self.r = 1
+        self.c = self.c + 1
+        if self.c > 4 then self.c = 1 end
+
+        self.y = self.y + self.incY
+        if self.y > 3 or self.y < 0 then
+            self.incY = -self.incY
+            self.y = self.y + self.incY
+        end
+    end
+    if self.incX == -1 and self.x < 0 then
+        self.incX = 1
+        self.x = self.x + self.incX
+        self.r = 3
+        self.c = self.c + 1
+        if self.c > 4 then self.c = 1 end
+
+        self.y = self.y + self.incY
+        if self.y > 3 or self.y < 0 then
+            self.incY = -self.incY
+            self.y = self.y + self.incY
+        end
+    end
+end
+
+function glib.menu.background:render()
+    render.setMaterial(glib.spritesheet)
+    for y = 0, 3 do
+        for x = 0, 3 do
+            local sprite = glib.sprites["border"]
+            render.setRGBA(50, 50, 50, 255)
+            render.drawTexturedRectUVFast(x*128, y*128, 128, 128, sprite.u0, sprite.v0, sprite.u1, sprite.v1, true)
+            local sprite = glib.sprites["background"]
+            render.setRGBA(255, 255, 255, 255)
+            render.drawTexturedRectUVFast(x*128, y*128, 128, 128, sprite.u0, sprite.v0, sprite.u1, sprite.v1, true)
+        end
+    end
+
+    render.setRGBA(255, 255, 255, 255)
+
+    local sprite = glib.sprites[glib.shapes[math.clamp((self.c + 1) % 5, 1, 4)]]
+    render.drawTexturedRectUVFast((self.incX == 1 and 3 or 0)*128, self.y*128, 128, 128, sprite.u0, sprite.v0, sprite.u1, sprite.v1, true)
+
+    local sprite = glib.sprites[glib.playerColors[self.c][self.r]]
+    render.drawTexturedRectUVFast(self.x*128, self.y*128, 128, 128, sprite.u0, sprite.v0, sprite.u1, sprite.v1, true)
+
+    render.setRGBA(50, 50, 50, 200)
+    render.drawRectFast(0, 0, 512, 512)
+end

@@ -1,0 +1,53 @@
+--@name games/slimetime/spawn
+--@author shadowscion
+--@shared
+--@include games/slimetime/source/cl_init.txt
+--@include games/slimetime/source/sv_init.txt
+
+glib = { debug = true }
+
+if SERVER then
+    local pos, ang = localToWorld(Vector(0, 0, 54), Angle(90, math.round((owner():getPos() - chip():getPos()):getAngle().y/90)*90, 0), chip():getPos(), chip():getAngles())
+    prop.createComponent(pos, ang, "starfall_screen", "models/hunter/plates/plate2x2.mdl", true):linkComponent(chip())
+
+    require("games/slimetime/source/sv_init.txt")
+
+    return
+end
+
+local pnames = {
+    "render.screen",
+    "material.create",
+    "material.urlcreate",
+}
+local pobjs = {
+    ["material.urlcreate"] = "https://raw.githubusercontent.com/shadowscion/starfall/master/slimes.png"
+}
+
+local has = true
+for _, perm in ipairs(pnames) do
+    if not hasPermission(perm, pobjs[perm]) then
+        has = false
+        break
+    end
+end
+
+if has then
+    require("games/slimetime/source/cl_init.txt")
+else
+    setupPermissionRequest(pnames, "Needed to see it kkkkkkk", true)
+
+    if hasPermission("render.screen") then
+        hook.add("render", "perms", function()
+            render.drawSimpleText(256, 256, "Press e to grant required permissions.", 1, 1)
+        end)
+    end
+
+    hook.add("permissionrequest", "perms", function()
+        if permissionRequestSatisfied() then
+            hook.remove("permissionrequest", "perms")
+            hook.remove("render", "perms")
+            require("games/slimetime/source/cl_init.txt")
+        end
+    end)
+end

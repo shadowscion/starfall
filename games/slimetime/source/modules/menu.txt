@@ -1,0 +1,323 @@
+--@name games/slimetime/source/modules/menu
+--@author shadowscion
+--@client
+
+local glib = glib
+
+render.createRenderTarget("menu")
+
+glib.menu = {
+    option = 0,
+    state = "main",
+    focus = true,
+    redraw = true,
+    streamlist = {},
+}
+
+glib.menu.inputs = {
+    [79] = "enter",
+    [80] = "enter",
+    [89] = "left",
+    [91] = "right",
+    [88] = "up",
+    [90] = "down",
+}
+
+glib.cursor = {
+    x = -1,
+    y = -1,
+    onScreen = false,
+}
+
+function glib:updateCursor()
+    local cx, cy = render.cursorPos()
+    self.cursor.x = cx or -1
+    self.cursor.y = cy or -1
+    self.cursor.onScreen = true
+    if self.cursor.x == -1 or self.cursor.x == -1 then
+        self.cursor.onScreen = false
+    end
+end
+
+local menucolor = Color(61, 61, 61, 200)
+local textcolor = Color(250, 177, 160)
+local textwhite = Color(223, 230, 233)
+local textflash = Color(255, 234, 167)
+
+local black = Color(0, 0, 0, 200)
+local white = Color(255, 255, 255)
+local clear = Color(0, 0, 0, 0)
+
+local menuFont1 = render.createFont("Akbar", 32, 32, false, false, true, true, false, false)
+local menuFont2 = render.createFont("Akbar", 18, 22, false, false, true, true, false, false)
+local menuFont3 = render.createFont("Akbar", 84, 22, false, false, true, true, false, false)
+
+function glib:renderMenu()
+    if self.menu.state == "main" then
+        if self.menu.background then
+            self.menu.background:render()
+        end
+
+        local fx = 128 + 8
+        local fy = 128 + 8
+        local fw = 256 - 16
+        local fh = 128 - 16
+
+        render.setColor(black)
+        render.drawRoundedBox(4, fx - 2, fy - 2, fw + 4, fh + 4)
+        render.drawRoundedBox(4, fx - 2, fy + 128 - 2, fw + 4, 256 - 16 + 4)
+
+        render.setColor(menucolor)
+        render.drawRoundedBox(4, fx, fy, fw, fh)
+        render.drawRoundedBox(4, fx, fy + 128, fw, 256 - 16)
+
+        local color = self.menu.textflash and textflash or textwhite
+        for i, str in ipairs({ "New Game", string.format("Spectate (%d)", #self.menu.streamlist), "High Scores" }) do
+            local isSelected = self.menu.option == (i - 1) and true or false
+            render.setFont(isSelected and menuFont1 or menuFont2)
+            render.setColor(isSelected and color or textwhite)
+            render.drawText(fx + fw*0.5, fy + (i - 1)*35  - (isSelected and 8 or 0) + 8, str, 1)
+        end
+
+        render.setFont(menuFont2)
+        render.setColor(textcolor)
+        render.drawText(fx + fw*0.5 - 53, fy + 165, "Menu Controls\n    select - ARROW KEYS\n    confirm - SHIFT\n\n" .. (self.menu.infotext or ""))
+
+        return
+    end
+    if self.menu.state == "spectate" then
+        if self.menu.background then
+            self.menu.background:render()
+        end
+
+        local fx = 128 + 8
+        local fy = 128 + 8
+        local fw = 256 - 16
+        local fh = 256 - 16
+
+        render.setColor(black)
+        render.drawRoundedBox(4, fx - 2, fy - 2, fw + 4, fh + 4)
+
+        render.setColor(menucolor)
+        render.drawRoundedBox(4, fx, fy, fw, fh)
+
+        local color = self.menu.textflash and textflash or textwhite
+
+        if self.menu.option == 0 then
+            render.setFont(menuFont1)
+            render.setColor(color or textwhite)
+            render.drawText(fx + fw*0.5, fy, "Main Menu", 1)
+        else
+            render.setFont(menuFont2)
+            render.setColor(textwhite)
+            render.drawText(fx + fw*0.5, fy + 8, "Main Menu", 1)
+        end
+
+        for i = 1, math.min(#self.menu.streamlist, 8) do
+            local num = i + math.max(self.menu.option - 8, 0)
+            local ply = self.menu.streamlist[num]
+            if not isValid(ply) then
+                table.remove(self.menu.streamlist, num)
+                continue
+            end
+            if self.menu.option == num then
+                render.setFont(menuFont1)
+                render.setColor(color)
+                render.drawText(fx + fw*0.5, fy + i * 24 + 8, ply:getName(), 1)
+            else
+                render.setFont(menuFont2)
+                render.setColor(textwhite)
+                render.drawText(fx + fw*0.5, fy + i * 24 + 15, ply:getName(), 1)
+            end
+        end
+
+        if #self.menu.streamlist > 8 then
+            render.setFont(menuFont1)
+            render.setColor(textcolor)
+            if self.menu.option < #self.menu.streamlist then
+                render.drawText(fx + 16, fy + 24*8 + 7, "v")
+            end
+            if self.menu.option > 8 then
+                render.drawText(fx + 16, fy + 24*1 + 15, "^")
+            end
+        end
+
+        return
+    end
+    if self.menu.state == "paused" then
+        local fx = 128 + 8 + 64
+        local fy = 128 + 8 + 64
+        local fw = 128 - 16
+        local fh = 128 - 16
+
+        render.setColor(black)
+        render.drawRoundedBox(4, fx - 2, fy - 2, fw + 4, fh + 4)
+
+        render.setColor(menucolor)
+        render.drawRoundedBox(4, fx, fy, fw, fh)
+
+        if self.engine.gameover then
+            render.setFont(menuFont3)
+            render.setColor(textwhite)
+            render.drawText(fx + fw*0.5, fy - 128, "Game Over!", 1)
+
+            local color = self.menu.textflash and textflash or textwhite
+            for i, str in ipairs({ "Resume", "Quit" }) do
+                local isSelected = self.menu.option == (i - 1) and true or false
+                render.setFont(isSelected and menuFont1 or menuFont2)
+                if i == 1 then render.setRGBA(100, 100, 100, 255) else render.setColor(isSelected and color or textwhite) end
+                render.drawText(fx + fw*0.5, fy + (i - 1)*35  - (isSelected and 8 or 0) + 32, str, 1)
+            end
+        else
+            if self.engine.type == "local" then
+                render.setFont(menuFont3)
+                render.setColor(textwhite)
+                render.drawText(fx + fw*0.5, fy - 128, "Paused", 1)
+            elseif self.engine.type == "stream" then
+                if isValid(self.engine.streamer) then
+                    render.setFont(menuFont1)
+                    render.setColor(textwhite)
+                    render.drawText(fx + fw*0.5, fy - 128, string.format("You are watching\n%s", self.engine.streamer:getName()), 1)                
+                end
+            end
+
+            local color = self.menu.textflash and textflash or textwhite
+            for i, str in ipairs({ "Resume", "Quit" }) do
+                local isSelected = self.menu.option == (i - 1) and true or false
+                render.setFont(isSelected and menuFont1 or menuFont2)
+                render.setColor(isSelected and color or textwhite)
+                render.drawText(fx + fw*0.5, fy + (i - 1)*35  - (isSelected and 8 or 0) + 32, str, 1)
+            end
+        end
+
+        return
+    end
+end
+
+function glib:drawMenu()
+    if not self.menu.focus then return end
+    if self.menu.redraw then
+        render.selectRenderTarget("menu")
+        render.clear(clear, true)
+        self:renderMenu()
+        render.selectRenderTarget()
+        self.menu.redraw = false
+    end
+    render.setColor(white)
+    render.setRenderTargetTexture("menu")
+    render.drawTexturedRect(0, 0, 1024, 1024)
+end
+
+timer.create("ticktock", 0.5, 0, function()
+    if not glib.menu.focus then
+        return
+    end
+    if not glib.menu.textflash then
+        glib.menu.textflash = true
+        glib.menu.redraw = true
+    else
+        glib.menu.textflash = false
+        glib.menu.redraw = true
+    end
+    if glib.menu.background then
+        glib.menu.background:update()
+        glib.menu.redraw = true
+    end
+end)
+
+function glib:resetMenuFlash()
+    self.menu.textflash = true
+    self.menu.redraw = true
+end
+
+function glib:onKeyMenu(keyCode, keyName)
+    if not self.menu.focus then
+        return
+    end
+    if self.menu.state == "main" then
+        if keyName == "up" then
+            self.menu.option = self.menu.option - 1
+            if self.menu.option < 0 then
+                self.menu.option = 1
+            end
+            self:resetMenuFlash()
+            return
+        elseif keyName == "down" then
+            self.menu.option = self.menu.option + 1
+            if self.menu.option > 2 then
+                self.menu.option = 0
+            end
+            self:resetMenuFlash()
+            return
+        elseif keyName == "enter" then
+            if self.menu.option == 0 then
+                if self.onMenuNewGame then self:onMenuNewGame() end
+                return
+            elseif self.menu.option == 1 then
+                self.menu.state = "spectate"
+                self.menu.option = 0
+                self:resetMenuFlash()
+                return
+            end
+        end
+        return
+    elseif self.menu.state == "spectate" then
+        if keyName == "up" then
+            self.menu.option = self.menu.option - 1
+            if self.menu.option < 0 then
+                self.menu.option = #self.menu.streamlist
+            end
+            self:resetMenuFlash()
+            return
+        elseif keyName == "down" then
+            self.menu.option = self.menu.option + 1
+            if self.menu.option > #self.menu.streamlist then
+                self.menu.option = 0
+            end
+            self:resetMenuFlash()
+            return
+        elseif keyName == "enter" then
+            if self.menu.option == 0 then
+                self.menu.state = "main"
+                self.menu.option = 0
+                self:resetMenuFlash()
+                return
+            else
+                self:onMenuSpectate(self.menu.streamlist[self.menu.option])
+                return
+            end
+        end
+        return
+    elseif self.menu.state == "paused" then
+        if keyName == "up" then
+            if self.engine.gameover then
+                return
+            end
+            self.menu.option = self.menu.option - 1
+            if self.menu.option < 0 then
+                self.menu.option = 1
+            end
+            self:resetMenuFlash()
+            return
+        elseif keyName == "down" then
+            if self.engine.gameover then
+                return
+            end
+            self.menu.option = self.menu.option + 1
+            if self.menu.option > 1 then
+                self.menu.option = 0
+            end
+            self:resetMenuFlash()
+            return
+        elseif keyName == "enter" then
+            if self.menu.option == 0 then
+                self:onMenuResume()
+                return
+            elseif self.menu.option == 1 then
+                self:onMenuQuit()
+                return
+            end
+        end
+        return
+    end
+end

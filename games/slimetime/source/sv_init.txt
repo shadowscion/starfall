@@ -1,0 +1,173 @@
+--@name games/slimetime/source/sv_init
+--@author shadowscion
+--@server
+
+local glib = glib
+local gametracker = {}
+
+local debugmsg = function(ply, ...)
+    print(Color(255, 211, 68), "server-> ", Color(238, 255, 0), string.lower(ply:getName()) .. "-> ", Color(255, 255, 255), ...)
+end
+
+-- relay
+net.receive("pos", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    net.start("pos")
+    net.writeUInt(net.readUInt(8), 8)
+    net.writeUInt(net.readUInt(8), 8)
+    net.send(gametracker[ply].viewerlist)
+end)
+
+net.receive("dir", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    net.start("dir")
+    net.writeUInt(net.readUInt(8), 8)
+    net.send(gametracker[ply].viewerlist)
+end)
+
+net.receive("col", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    net.start("col")
+    net.writeUInt(net.readUInt(8), 8)
+    net.send(gametracker[ply].viewerlist)
+end)
+
+net.receive("score", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    net.start("score")
+    net.writeUInt(net.readUInt(32), 32)
+    net.send(gametracker[ply].viewerlist)
+end)
+
+net.receive("board", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    net.start("board")
+    net.writeString(net.readString())
+    net.send(gametracker[ply].viewerlist)
+end)
+
+net.receive("attack", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    net.start("attack")
+    net.writeString(net.readString())
+    net.send(gametracker[ply].viewerlist)
+end)
+
+net.receive("netGameover", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist == 0 then
+        return
+    end
+    if glib.debug then debugmsg(ply, "netGameover") end
+    net.start("netGameover")
+    net.send(gametracker[ply].viewerlist)
+end)
+
+-- sends the game list to all clients
+local function syncGameList(ply)
+    for ply, _ in pairs(gametracker) do
+        if not isValid(ply) then
+            gametracker[ply] = nil
+        end
+    end
+    if glib.debug then debugmsg(ply, "netSyncList") end
+    local num = table.count(gametracker)
+    net.start("netSyncList")
+    net.writeUInt(num, 16)
+    for ply, _ in pairs(gametracker) do
+        net.writeEntity(ply)
+    end
+    net.send()
+end
+
+-- when a player creates a game, sync the game list
+net.receive("netNewgame", function(len, ply)
+    if not isValid(ply) or gametracker[ply] then
+        return
+    end
+    if glib.debug then debugmsg(ply, "netNewgame") end
+    gametracker[ply] = {
+        viewerlist = {}
+    }
+    syncGameList(ply)
+end)
+
+-- when a player ends their game, tell anyone who may have been watching
+net.receive("netEndgame", function(len, ply)
+    if not isValid(ply) or not gametracker[ply] then
+        return
+    end
+    if #gametracker[ply].viewerlist > 0 then
+        net.start("netGameover")
+        net.send(gametracker[ply].viewerlist)
+    end
+    if glib.debug then debugmsg(ply, "netEndgame") end
+    gametracker[ply] = nil
+    syncGameList(ply)
+end)
+
+-- when a player requests to watch a game, tell the game creator to start transmitting data
+net.receive("netJoinStream", function(len, ply)
+    if not isValid(ply) then
+        return
+    end
+    local streamer = net.readEntity()
+    if not isValid(streamer) or not gametracker[streamer] then
+        return
+    end
+    if glib.debug then debugmsg(ply, string.format("%s requested stream of %s", ply:getName(), streamer:getName())) end
+    table.insert(gametracker[streamer].viewerlist, ply)
+    net.start("netHook")
+    net.writeUInt(#gametracker[streamer].viewerlist, 16)
+    net.send(streamer)
+end)
+
+net.receive("netLeaveStream", function(len, ply)
+    if not isValid(ply) then
+        return
+    end
+    local streamer = net.readEntity()
+    if not isValid(streamer) or not gametracker[streamer] then
+        return
+    end
+    for i, viewer in ipairs(gametracker[streamer].viewerlist) do
+        if viewer == ply then table.remove(gametracker[streamer].viewerlist, i) end
+    end
+    if glib.debug then debugmsg(ply, string.format("%s stopped watching %s", ply:getName(), streamer:getName())) end
+    if #gametracker[streamer].viewerlist == 0 then
+        net.start("netUnhook")
+        net.send(streamer)
+    end
+end)

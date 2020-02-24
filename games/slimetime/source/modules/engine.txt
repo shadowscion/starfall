@@ -1,0 +1,205 @@
+--@name games/slimetime/source/modules/engine
+--@author shadowscion
+--@client
+
+local glib = glib
+
+render.createRenderTarget("background")
+render.createRenderTarget("foreground")
+render.createRenderTarget("overlay")
+
+glib.engine = { redraw = {} }
+
+function glib:onMenuResume()
+    self.menu.focus = false
+    self.engine.paused = false
+end
+
+function glib:onMenuNewGame()
+    net.start("netNewgame")
+    net.send()
+    self.isNetworked = false
+    self.viewerCount = 0
+    self.menu.focus = false
+    self:startLocalGame()
+    self:resetTime()
+end
+
+function glib:onMenuSpectate(ply)
+    if not isValid(ply) then
+        return
+    end
+    net.start("netJoinStream")
+    net.writeEntity(ply)
+    net.send()
+    self.menu.focus = false
+    self:startStreamedGame(ply)
+    self:resetTime()
+end
+
+function glib:onMenuQuit()
+    self.menu.focus = true
+    self.menu.state = "main"
+    self.menu.option = 0
+    self:resetMenuFlash()
+    if self.engine.type == "local" then
+        net.start("netEndgame")
+        net.send()
+    end
+    if self.engine.type == "stream" then
+        if isValid(self.engine.streamer) then
+            net.start("netLeaveStream")
+            net.writeEntity(self.engine.streamer)
+            net.send()
+        end
+    end
+    self:resetGame()
+end
+
+function glib:resetGame()
+    self:resetScreenshake()
+    self.engine.desync = false
+    self.engine.isdummy = false
+    self.engine.type = nil
+    self.engine.paused = false
+    self.engine.gameover = false
+    self.engine.focus = false
+    self.engine.streamer = nil
+    self.engine.streamername = nil
+    self.isNetworked = false
+    self.viewerCount = 0
+end
+
+function glib:startLocalGame()
+    self:resetScreenshake()
+    self.engine.desync = false
+    self.engine.type = "local"
+    self.engine.paused = false
+    self.engine.focus = true
+    self.engine.redraw.background = true
+    self.engine.redraw.foreground = true
+    self.engine.redraw.overlay = true
+    self:onLocalGameStart()
+end
+
+function glib:startStreamedGame(streamer)
+    if not isValid(streamer) then
+        return
+    end
+    self:resetScreenshake()
+    self.engine.type = "stream"
+    self.engine.desync = true
+    self.engine.paused = false
+    self.engine.focus = true
+    self.engine.streamer = streamer
+    self.engine.streamername = streamer:getName()
+    self.engine.redraw.background = true
+    self.engine.redraw.foreground = true
+    self.engine.redraw.overlay = true
+    self:onStreamStart()
+end
+
+local clear = Color(0, 0, 0, 0)
+local white = Color(255, 255, 255)
+
+local blur = {}
+for i = 1, 4 do
+    blur[i] = Matrix()
+    blur[i]:setTranslation(Vector(math.rand(-i, i), math.rand(-i, i)))
+end
+
+glib.engine.screenshake = { matrix = Matrix(), pos = Vector(), ang = Angle(), magn = 0, decay = 5 }
+
+function glib:resetScreenshake()
+    self.engine.screenshake.pos.x = 256
+    self.engine.screenshake.pos.y = 256
+    self.engine.screenshake.ang.y = 0
+    self.engine.screenshake.magn = 0
+    self.engine.screenshake.matrix:setTranslation(self.engine.screenshake.pos)
+    self.engine.screenshake.matrix:setAngles(self.engine.screenshake.ang)
+end
+
+function glib:updateScreenshake(dt)
+    if self.engine.screenshake.magn > 0 then
+        self.engine.screenshake.ang.y = math.random(-self.engine.screenshake.magn, self.engine.screenshake.magn)
+        self.engine.screenshake.matrix:setAngles(self.engine.screenshake.ang)
+        self.engine.screenshake.magn = math.max(0, self.engine.screenshake.magn - self.engine.screenshake.decay*dt)
+    end
+end
+
+function glib:setScreenshakeMagnitude(num)
+    self.engine.screenshake.magn = self.engine.screenshake.magn + num
+end
+
+function glib:drawGame()
+    if not self.engine.focus then return end
+    if self.engine.redraw.background then
+        render.selectRenderTarget("background")
+        render.clear(clear, true)
+        self:renderBackground()
+        render.selectRenderTarget()
+        self.engine.redraw.background = false
+    end
+    if self.engine.redraw.foreground then
+        render.selectRenderTarget("foreground")
+        render.clear(clear, true)
+        self:renderForeground()
+        render.selectRenderTarget()
+        self.engine.redraw.foreground = false
+    end
+    if self.engine.redraw.overlay then
+        render.selectRenderTarget("overlay")
+        render.clear(clear, true)
+        self:renderOverlay()
+        render.selectRenderTarget()
+        self.engine.redraw.overlay = false
+    end
+    render.pushMatrix(self.engine.screenshake.matrix)
+    if self.engine.paused then
+        render.setRGBA(150, 150, 150, 35)
+        for i, mat in ipairs(blur) do
+            render.pushMatrix(mat)
+            render.setRenderTargetTexture("background")
+            render.drawTexturedRect(-256, -256, 1024, 1024)
+            render.setRenderTargetTexture("foreground")
+            render.drawTexturedRect(-256, -256, 1024, 1024)
+            render.setRenderTargetTexture("overlay")
+            render.drawTexturedRect(-256, -256, 1024, 1024)
+            render.popMatrix()
+        end
+    else
+        render.setColor(white)
+        render.setRenderTargetTexture("background")
+        render.drawTexturedRect(-256, -256, 1024, 1024)
+        render.setRenderTargetTexture("foreground")
+        render.drawTexturedRect(-256, -256, 1024, 1024)
+        render.setRenderTargetTexture("overlay")
+        render.drawTexturedRect(-256, -256, 1024, 1024)
+    end
+    render.popMatrix()
+end
+
+function glib:onKeyGame(keyCode, keyName, force)
+    if not force then
+        if not self.engine.focus then return end
+    end
+    if not self.engine.paused then
+        if keyName == "pause" then
+            self.engine.paused = true
+            self.menu.focus = true
+            self.menu.state = "paused"
+            self.menu.option = self.engine.gameover and 1 or 0
+            self:resetMenuFlash()
+            return
+        end
+    end
+    if self.engine.type ~= "local" then return end
+    self:gameInput(keyCode, keyName, force)
+end
+
+function glib:createDummyGames()
+    if player() ~= owner() then
+        glib:onMenuNewGame()
+        timer.simple(1, function() glib.engine.isdummy = true end)
+    end
+end

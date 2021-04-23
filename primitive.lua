@@ -75,8 +75,8 @@ do
 					tris[#tris + 1] = v1
 					tris[#tris + 1] = v2
 					tris[#tris + 1] = v3
+                                	t2 = t3
 				end
-				t2 = t3
 			end
 		end
 
